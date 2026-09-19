@@ -15,6 +15,11 @@ El backend no mueve fondos ni ejecuta automáticamente las recomendaciones de
 bloqueo. Publica veredictos auditables para que una política externa decida la
 acción correspondiente.
 
+El backend consume `@aureo/sdk`, que también puede utilizarse directamente en
+otras aplicaciones Ethereum. Para integrar solo el middleware de wallet,
+monitorización o políticas, consulta
+[`packages/sdk/README.md`](../packages/sdk/README.md).
+
 ## 1. Instalar el proyecto
 
 Desde la raíz del monorepo:
@@ -42,6 +47,19 @@ AUREO_CORE_ADDRESS=0x...
 XAI_API_KEY=...
 ```
 
+Para habilitar la wallet Ethereum operativa del backend:
+
+```dotenv
+ETH_PRIVATE_KEY=0x...
+ETH_PUBLIC_ADDRESS=0x...
+```
+
+`ETH_PUBLIC_ADDRESS` se compara con la dirección derivada de
+`ETH_PRIVATE_KEY` al iniciar. Si no se configuran, el backend permanece en modo
+solo lectura. La wallet debe tener `OPERATOR_ROLE` o `COMPLIANCE_ROLE` en
+`AureoCore` para firmar acciones administrativas. Nunca guardes la clave
+privada en Git; en producción usa Vault, KMS, HSM, Safe o MPC.
+
 Variables opcionales:
 
 | Variable              |        Predeterminado | Uso                                     |
@@ -51,6 +69,8 @@ Variables opcionales:
 | `OPERATIONAL_RESERVE` |                 vacío | Umbral de volumen que activa MFA        |
 | `BACKEND_PORT`        |                `3000` | Puerto HTTP y WebSocket                 |
 | `BACKEND_LOG_LEVEL`   |                `info` | Reservada para configuración de logging |
+| `ETH_PRIVATE_KEY`     |                 vacío | Clave privada de la wallet operativa    |
+| `ETH_PUBLIC_ADDRESS`  |                 vacío | Dirección pública esperada de la wallet |
 
 No guardes `backend/.env` en el repositorio ni compartas `XAI_API_KEY`.
 
@@ -96,6 +116,12 @@ El endpoint de salud no requiere autenticación:
 
 ```bash
 curl http://127.0.0.1:3000/health
+```
+
+La identidad pública de la wallet puede comprobarse sin exponer la clave:
+
+```bash
+curl http://127.0.0.1:3000/wallet
 ```
 
 Respuesta esperada:

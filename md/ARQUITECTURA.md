@@ -1,7 +1,8 @@
 # Áureo
 
-Áureo es un monorepo ESM para observabilidad, cumplimiento e inteligencia de datos
-Web3 en tiempo real. El flujo principal es:
+Áureo es un monorepo ESM de middleware open source para aplicaciones Ethereum:
+observabilidad, seguridad, wallet tooling y evaluación de políticas en tiempo
+real. El flujo principal es:
 
 ```text
 Contrato AureoCore -> WebSocket RPC -> backend (ventana temporal) -> xAI/Grok
@@ -11,6 +12,10 @@ Contrato AureoCore -> WebSocket RPC -> backend (ventana temporal) -> xAI/Grok
 ```
 
 ## Componentes
+
+El núcleo reusable está en `packages/sdk/`. El backend y la CLI son una
+implementación de referencia que demuestra cómo consumirlo; no son requisitos
+para integrar el SDK en otra dapp.
 
 ### Blockchain
 
@@ -32,6 +37,14 @@ El SDK oficial de OpenAI se configura con `baseURL=https://api.x.ai/v1` para usa
 `grok-4.6`. `response_format: { type: "json_object" }` reduce respuestas libres,
 pero `validateVerdict` vuelve a validar tipos, enum y campos obligatorios antes de
 publicar un veredicto. Las credenciales se obtienen exclusivamente de `.env`.
+
+El backend puede crear una wallet Ethereum con `ethers.Wallet` a partir de
+`ETH_PRIVATE_KEY`, conectarla al provider y verificarla contra
+`ETH_PUBLIC_ADDRESS`. La wallet del backend es distinta de la wallet de
+despliegue (`DEPLOYER_PRIVATE_KEY`) y debe recibir explícitamente el rol
+necesario en el contrato. Sin clave privada, el backend se mantiene en modo solo
+lectura. El endpoint `GET /wallet` expone únicamente la dirección pública y el
+estado del signer, nunca la clave.
 
 Antes de invocar a Grok se ejecutan reglas deterministas. Si una misma dirección
 aparece en más de tres transferencias cuyo rango ocupa como máximo cinco bloques
@@ -66,7 +79,7 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 ├── backend/
 │   ├── .env.example
 │   ├── package.json
-│   └── src/{analyzer.js,index.js}
+│   └── src/{analyzer.js,index.js,wallet.js}
 ├── blockchain/
 │   ├── .env.example
 │   ├── contracts/AureoCore.sol
@@ -77,6 +90,9 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 │   ├── .env.example
 │   ├── package.json
 │   └── src/index.js
+├── packages/sdk/
+│   ├── README.md
+│   └── src/{index.js,wallet.js,monitor.js,policy.js}
 ├── md/ARQUITECTURA.md
 ├── md/BACKEND.md
 ├── md/CLI.md

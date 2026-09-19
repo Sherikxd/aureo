@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { evaluateEthereumPolicy } from '@aureo/sdk';
 
 const RISK_LEVELS = new Set(['bajo', 'medio', 'alto', 'critico']);
 const RISK_RANK = { bajo: 0, medio: 1, alto: 2, critico: 3 };
@@ -99,77 +100,11 @@ export function createAnalyzer(options = {}) {
  */
 export function evaluateRules(events, context = {}) {
   const transfers = events.filter((event) => isTransfer(event));
-  const reasons = [];
-  const speedViolation = hasBlockSpeedViolation(transfers);
-  if (speedViolation) {
-    reasons.push(
-      'Regla de velocidad: una dirección ejecutó más de 3 operaciones en 5 bloques consecutivos.',
-    );
-  }
-
-  const volumeViolation = transfers.some((event) => {
-    const amount = toAmount(event.amount);
-    const history = getHistory(context.historicalAmounts, event.initiator);
-    const average = history.length
-      ? history.reduce((sum, value) => sum + value, 0) / history.length
-      : 0;
-    const exceedsAverage = average > 0 && amount > average * 3;
-    const exceedsReserve =
-      Number.isFinite(context.operationalReserve) && amount > context.operationalReserve;
-    return exceedsAverage || exceedsReserve;
-  });
-  if (volumeViolation) {
-    reasons.push(
-      'Regla de volumen: una transacción supera 300% del promedio histórico o la reserva operativa declarada; se requiere MFA.',
-    );
-  }
-
-  return {
-    speedViolation,
-    volumeViolation,
-    minimumRisk: volumeViolation ? 'medio' : 'bajo',
-    reasons,
-  };
-}
-
-function hasBlockSpeedViolation(transfers) {
-  const byAddress = new Map();
-  for (const transfer of transfers) {
-    const blockNumber = Number(transfer.blockNumber);
-    if (!Number.isInteger(blockNumber) || blockNumber < 0) continue;
-    const address = String(transfer.initiator).toLowerCase();
-    const blocks = byAddress.get(address) ?? [];
-    blocks.push(blockNumber);
-    byAddress.set(address, blocks);
-  }
-
-  return [...byAddress.values()].some((blocks) => {
-    blocks.sort((left, right) => left - right);
-    return blocks.some(
-      (block, index) =>
-        blocks.slice(index, index + 4).length === 4 && blocks[index + 3] - block <= 4,
-    );
-  });
+  return evaluateEthereumPolicy(transfers, context);
 }
 
 function isTransfer(event) {
   return Boolean(event && typeof event === 'object' && 'initiator' in event && 'amount' in event);
-}
-
-function toAmount(value) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount < 0) throw new Error('Monto de transferencia inválido.');
-  return amount;
-}
-
-function getHistory(history, address) {
-  if (!history || !address) return [];
-  const values =
-    history instanceof Map
-      ? (history.get(address) ?? history.get(address.toLowerCase()))
-      : (history[address] ?? history[address.toLowerCase()]);
-  if (!Array.isArray(values)) throw new Error(`Histórico inválido para ${address}.`);
-  return values.map(toAmount);
 }
 
 /**

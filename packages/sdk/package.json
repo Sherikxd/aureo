@@ -1,0 +1,24 @@
+{
+  "name": "@aureo/sdk",
+  "version": "0.1.0",
+  "description": "Open-source Ethereum middleware for wallet, event monitoring and risk policy tooling.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js",
+    "./wallet": "./src/wallet.js",
+    "./monitor": "./src/monitor.js",
+    "./policy": "./src/policy.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "lint": "eslint src",
+    "pack": "npm pack --dry-run"
+  },
+  "dependencies": {
+    "ethers": "^6.13.4"
+  }
+}

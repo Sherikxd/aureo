@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { ethers } from 'ethers';
 import { WebSocketServer } from 'ws';
 import { createAnalyzer } from './analyzer.js';
+import { createEthWallet } from './wallet.js';
 
 const ABI = [
   'event CorporateTransferRecorded(uint256 indexed operationId,address indexed initiator,address indexed beneficiary,uint256 amount,bytes32 operationReference,uint256 timestamp)',
@@ -28,11 +29,26 @@ export async function start() {
 
   const provider = new ethers.WebSocketProvider(wsUrl);
   const contract = new ethers.Contract(address, ABI, provider);
+  const ethWallet = createEthWallet(provider);
+  const signedContract = ethWallet ? contract.connect(ethWallet.wallet) : null;
   const analyzer = createAnalyzer();
   const httpServer = createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
     if (request.method === 'GET' && requestUrl.pathname === '/health') {
-      sendJson(response, 200, { status: 'ok' });
+      sendJson(response, 200, {
+        status: 'ok',
+        wallet: ethWallet
+          ? { configured: true, address: ethWallet.address }
+          : { configured: false },
+      });
+      return;
+    }
+    if (request.method === 'GET' && requestUrl.pathname === '/wallet') {
+      sendJson(response, 200, {
+        configured: Boolean(ethWallet),
+        address: ethWallet?.address ?? null,
+        signerReady: Boolean(signedContract),
+      });
       return;
     }
     if (request.method === 'POST' && requestUrl.pathname === '/reports') {
@@ -116,6 +132,11 @@ export async function start() {
   }, windowMs);
 
   console.log(`Áureo escuchando eventos en ${wsUrl}`);
+  console.log(
+    ethWallet
+      ? `Wallet Ethereum operativa: ${ethWallet.address}`
+      : 'Wallet Ethereum no configurada; backend en modo solo lectura.',
+  );
 
   const shutdown = async (signal) => {
     clearInterval(windowTimer);

@@ -1,8 +1,16 @@
 import '@nomicfoundation/hardhat-toolbox';
 import '@nomicfoundation/hardhat-ignition';
 import 'dotenv/config';
+import { Wallet } from 'ethers';
 
 const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+if (
+  privateKey &&
+  process.env.DEPLOYER_PUBLIC_ADDRESS &&
+  new Wallet(privateKey).address.toLowerCase() !== process.env.DEPLOYER_PUBLIC_ADDRESS.toLowerCase()
+) {
+  throw new Error('DEPLOYER_PUBLIC_ADDRESS no coincide con DEPLOYER_PRIVATE_KEY.');
+}
 
 /** @type import('hardhat/config').HardhatUserConfig */
 export default {

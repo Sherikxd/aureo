@@ -7,7 +7,8 @@
   "workspaces": [
     "blockchain",
     "backend",
-    "cli-client"
+    "cli-client",
+    "packages/*"
   ],
   "scripts": {
     "format": "prettier --write .",
@@ -16,6 +17,8 @@
     "blockchain:test": "npm --workspace blockchain run test",
     "backend:start": "npm --workspace backend run start",
     "cli": "npm --workspace cli-client run start",
+    "sdk:lint": "npm --workspace @aureo/sdk run lint",
+    "sdk:pack": "npm --workspace @aureo/sdk run pack",
     "deploy:blockchain": "bash scripts/deploy-blockchain.sh",
     "deploy:backend": "bash scripts/deploy-backend.sh",
     "deploy:systemd": "sudo bash scripts/install-systemd.sh",
