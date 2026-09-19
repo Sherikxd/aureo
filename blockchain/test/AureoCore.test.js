@@ -77,10 +77,12 @@ describe('AureoCore', function () {
   it('rejects invalid input and blocks writes while paused', async function () {
     const { core, admin, beneficiary } = await deploy();
 
-    await expect(core.recordCorporateTransfer(ethers.ZeroAddress, 1n, ethers.ZeroHash)).to.be
-      .revertedWithCustomError(core, 'InvalidAddress');
-    await expect(core.recordCorporateTransfer(beneficiary.address, 0n, ethers.ZeroHash)).to.be
-      .revertedWithCustomError(core, 'InvalidAmount');
+    await expect(
+      core.recordCorporateTransfer(ethers.ZeroAddress, 1n, ethers.ZeroHash),
+    ).to.be.revertedWithCustomError(core, 'InvalidAddress');
+    await expect(
+      core.recordCorporateTransfer(beneficiary.address, 0n, ethers.ZeroHash),
+    ).to.be.revertedWithCustomError(core, 'InvalidAmount');
     await expect(core.startAlert(ethers.ZeroHash, 0, 'Riesgo')).to.be.revertedWithCustomError(
       core,
       'InvalidRiskLevel',
@@ -95,8 +97,9 @@ describe('AureoCore', function () {
     );
 
     await core.connect(admin).pause();
-    await expect(core.recordCorporateTransfer(beneficiary.address, 1n, ethers.ZeroHash)).to.be
-      .revertedWithCustomError(core, 'EnforcedPause');
+    await expect(
+      core.recordCorporateTransfer(beneficiary.address, 1n, ethers.ZeroHash),
+    ).to.be.revertedWithCustomError(core, 'EnforcedPause');
     await core.connect(admin).unpause();
     await expect(core.recordCorporateTransfer(beneficiary.address, 1n, ethers.ZeroHash)).to.emit(
       core,

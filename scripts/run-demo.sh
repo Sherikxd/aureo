@@ -20,6 +20,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [[ -f blockchain/.env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source blockchain/.env
+  set +a
+fi
+
 AUREO_RUNTIME_ENV="$runtime_file" bash scripts/deploy-blockchain.sh localhost
 set -a
 # shellcheck disable=SC1091
@@ -27,6 +34,10 @@ source examples/demo-dapp/.env
 # shellcheck disable=SC1091
 source "$runtime_file"
 set +a
+if [[ "${AUREO_LOCAL_DEFAULT_ACCOUNT:-true}" == true ]]; then
+  export DEMO_PRIVATE_KEY=
+  export DEMO_PUBLIC_ADDRESS=
+fi
 export AUREO_CORE_ADDRESS
 
 npm --workspace @aureo/demo-dapp run start

@@ -7,6 +7,19 @@ import WebSocket from 'ws';
 
 const program = new Command();
 
+function requireUrl(value, name) {
+  if (!value) throw new Error(`Configura ${name} o proporciona --url.`);
+  try {
+    return new URL(value).toString();
+  } catch {
+    throw new Error(`URL inválida: ${value}`);
+  }
+}
+
+function createAbortSignal(timeoutMs) {
+  return AbortSignal.timeout(timeoutMs);
+}
+
 program
   .name('aureo')
   .description('Cliente CLI de observabilidad y compliance Web3')
@@ -17,13 +30,22 @@ program
   .description('Muestra en tiempo real los veredictos de riesgo')
   .option('-u, --url <url>', 'WebSocket del backend', process.env.AUREO_STREAM_URL)
   .action((options) => {
-    if (!options.url) throw new Error('Configura AUREO_STREAM_URL o proporciona --url.');
-    const socket = new WebSocket(options.url);
-    socket.on('open', () => console.log(`Conectado a ${options.url}. Ctrl+C para salir.`));
+    const url = requireUrl(options.url, 'AUREO_STREAM_URL');
+    const socket = new WebSocket(url);
+    let mfaPromptActive = false;
+    let shuttingDown = false;
+    socket.on('open', () => console.log(`Conectado a ${url}. Ctrl+C para salir.`));
     socket.on('message', async (message) => {
-      const payload = JSON.parse(message.toString());
+      let payload;
+      try {
+        payload = JSON.parse(message.toString());
+      } catch {
+        console.error('Se recibió un mensaje inválido del stream; se ignora.');
+        return;
+      }
       console.log(JSON.stringify(payload, null, 2));
-      if (!payload.verdict?.requiere_mfa) return;
+      if (!payload.verdict?.requiere_mfa || mfaPromptActive) return;
+      mfaPromptActive = true;
       const readline = createInterface({ input, output });
       try {
         const token = await readline.question('MFA requerida. Introduce tu código MFA: ');
@@ -31,16 +53,27 @@ program
         else console.log('MFA recibida; requiere validación por el proveedor de identidad.');
       } finally {
         readline.close();
+        mfaPromptActive = false;
       }
     });
     socket.on('error', (error) => {
       console.error(`Error del stream: ${error.message}`);
       process.exitCode = 1;
     });
-    process.once('SIGINT', () => {
-      socket.close();
-      process.exit(0);
+    socket.on('close', (code, reason) => {
+      if (!shuttingDown) {
+        console.error(`Stream desconectado (código ${code}${reason ? `: ${reason}` : ''}).`);
+        process.exitCode = 1;
+      }
     });
+    const shutdown = () => {
+      shuttingDown = true;
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
+        socket.close();
+      process.exit(0);
+    };
+    process.once('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
   });
 
 program
@@ -49,17 +82,25 @@ program
   .argument('<query>', 'Pregunta para el reporte')
   .option('-u, --url <url>', 'API del backend', process.env.AUREO_BACKEND_URL)
   .action(async (query, options) => {
-    if (!options.url) throw new Error('Configura AUREO_BACKEND_URL o proporciona --url.');
+    const url = requireUrl(options.url, 'AUREO_BACKEND_URL').replace(/\/$/, '');
+    if (!query.trim()) throw new Error('La consulta no puede estar vacía.');
     try {
-      const response = await fetch(`${options.url}/reports`, {
+      const response = await fetch(`${url}/reports`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ query }),
+        signal: createAbortSignal(15_000),
       });
-      if (!response.ok) throw new Error(`Backend respondió HTTP ${response.status}.`);
+      if (!response.ok) {
+        const detail = (await response.text()).trim();
+        throw new Error(
+          `Backend respondió HTTP ${response.status}${detail ? `: ${detail}` : '.'}`,
+        );
+      }
       console.log(JSON.stringify(await response.json(), null, 2));
     } catch (error) {
-      console.error(`No se pudo obtener el reporte: ${error.message}`);
+      const message = error.name === 'TimeoutError' ? 'tiempo de espera agotado' : error.message;
+      console.error(`No se pudo obtener el reporte: ${message}`);
       process.exitCode = 1;
     }
   });

@@ -14,6 +14,12 @@ if [[ -f blockchain/.env ]]; then
 fi
 
 if [[ "$NETWORK" == "localhost" ]]; then
+  # Hardhat's local node funds its generated accounts, not a wallet from .env.
+  # Set AUREO_LOCAL_DEFAULT_ACCOUNT=false to deploy with a funded custom wallet.
+  export AUREO_LOCAL_DEFAULT_ACCOUNT="${AUREO_LOCAL_DEFAULT_ACCOUNT:-true}"
+  if [[ "${AUREO_LOCAL_DEFAULT_ACCOUNT:-false}" == true ]]; then
+    unset DEPLOYER_PRIVATE_KEY DEPLOYER_PUBLIC_ADDRESS
+  fi
   printf 'Verificando nodo Hardhat en 127.0.0.1:8545...\n'
   node --input-type=module -e "const { JsonRpcProvider } = await import('ethers'); const p = new JsonRpcProvider(process.env.HARDHAT_RPC_URL || 'http://127.0.0.1:8545'); await p.getBlockNumber();" || {
     printf 'No hay un nodo local disponible. Ejecuta: npm --workspace blockchain run node\n' >&2

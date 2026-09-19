@@ -15,10 +15,33 @@ Todos se ejecutan desde la raíz del repositorio.
 | `npm run deploy:systemd`             | Instala el servicio `aureo-backend` en Linux con systemd.                          |
 | `npm run demo:run`                   | Despliega el contrato y ejecuta la dapp de prueba del SDK.                         |
 | `npm run demo:blockchain`            | Ejecuta el demo de persistencia, alertas y pausa del contrato.                     |
+| `npm run start:local`                | Inicia nodo Hardhat, despliega el contrato y arranca el backend sin Docker.        |
+| `npm run start:local -- --with-cli`  | Inicia el entorno local anterior y la CLI en modo `stream`.                        |
 | `npm run docker:up`                  | Construye y levanta nodo, despliegue y backend.                                    |
 | `npm run docker:down`                | Detiene los servicios Docker.                                                      |
 | `npm run docker:logs`                | Muestra logs del backend.                                                          |
 | `npm run docker:cli`                 | Ejecuta la CLI dentro de Docker.                                                   |
+
+### Cuentas en el entorno local
+
+Los comandos `deploy:blockchain`, `demo:run` y `start:local` usan por defecto
+la primera cuenta prefunded que crea `hardhat node`. Esto permite ejecutar el
+flujo local aunque `blockchain/.env` o `examples/demo-dapp/.env` contengan
+claves de una wallet externa.
+
+Para usar una wallet personalizada en el despliegue y en el demo:
+
+```dotenv
+# blockchain/.env
+AUREO_LOCAL_DEFAULT_ACCOUNT=false
+DEPLOYER_PRIVATE_KEY=0x...
+DEPLOYER_PUBLIC_ADDRESS=0x...
+```
+
+Configura también `DEMO_PRIVATE_KEY` y `DEMO_PUBLIC_ADDRESS` en
+`examples/demo-dapp/.env` si ejecutas `npm run demo:run`. La wallet debe tener
+fondos en el nodo local; además, la cuenta del demo debe tener
+`OPERATOR_ROLE` en `AureoCore`. No uses claves reales en este flujo.
 
 ## Configuración inicial
 
@@ -117,6 +140,26 @@ Ejecuta la configuración y completa `backend/.env` con `XAI_API_KEY`:
 npm run setup:env
 npm run docker:up
 ```
+
+### Entorno local sin Docker
+
+Después de ejecutar `npm run setup:env` y completar `backend/.env`, inicia todos
+los servicios base con:
+
+```bash
+npm run start:local
+```
+
+El script inicia el nodo Hardhat, despliega `AureoCore` automáticamente y usa
+la cuenta local prefunded de Hardhat para el despliegue (sin modificar
+`blockchain/.env`), y usa la dirección desplegada para arrancar el backend. Para
+incluir la CLI en modo stream:
+
+```bash
+npm run start:local -- --with-cli
+```
+
+Pulsa `Ctrl+C` para detener el backend y el nodo local.
 
 ### Despliegue manual
 

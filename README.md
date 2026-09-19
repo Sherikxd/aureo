@@ -9,6 +9,23 @@ alertas operativas y una API/CLI de desarrollo. La aplicación de referencia
 escucha eventos corporativos, aplica reglas deterministas y puede consultar a
 Grok para enriquecer el análisis.
 
+## Por qué existe Áureo
+
+Las aplicaciones que manejan operaciones corporativas sobre Ethereum necesitan
+visibilidad y controles operativos sin perder las propiedades de auditabilidad
+de la cadena. En la práctica, los eventos on-chain suelen quedar separados de
+las reglas de riesgo, las alertas de compliance y las herramientas que usa el
+equipo para investigar incidentes. Esta separación dificulta detectar patrones
+anómalos a tiempo, responder ante una operación peligrosa y conservar evidencia
+clara de lo ocurrido.
+
+Áureo aborda ese problema como una capa middleware abierta y reutilizable:
+registra operaciones y alertas en `AureoCore`, observa los eventos en tiempo
+real, aplica reglas deterministas de velocidad y volumen, y expone los
+resultados mediante API, WebSocket, CLI y SDK. El proyecto busca reducir el
+tiempo entre una señal de riesgo y una respuesta verificable, sin custodiar
+fondos ni sustituir los controles institucionales de firma, HSM, Safe o MPC.
+
 ## Application Middleware & Open-Source Tooling
 
 El paquete reusable [`@aureo/sdk`](packages/sdk) es el centro de esta
@@ -57,7 +74,7 @@ adaptación. Permite a una dapp:
 | `cli-client/`   | Streaming de veredictos y consultas de reportes desde terminal.                 |
 | `packages/sdk/` | SDK reusable de wallet, monitoring y policy middleware para dapps Ethereum.     |
 | `scripts/`      | Despliegue local, despliegue Docker y servicio systemd.                         |
-| `md/`           | Arquitectura, desarrollo local y manual de CLI.                                 |
+| `md/`           | Arquitectura, desarrollo local, manual de CLI y prompts para contribuir con IA. |
 | `.copilot/`     | Reglas de contexto y hook de pre-commit.                                        |
 
 ## Requisitos
@@ -98,6 +115,8 @@ npm run clean
 ```
 
 La referencia de estos scripts está en [`md/SCRIPTS.md`](md/SCRIPTS.md).
+Los prompts reutilizables para investigar, implementar y revisar cambios con
+asistencia de IA están en [`md/prompts/README.md`](md/prompts/README.md).
 
 Para firmar operaciones Ethereum desde el backend se necesita una wallet
 operativa: `ETH_PRIVATE_KEY` y su dirección pública `ETH_PUBLIC_ADDRESS`. La
@@ -212,7 +231,19 @@ npm run deploy:backend
 npm run cli -- stream
 ```
 
+Para iniciar el nodo, desplegar el contrato y arrancar el backend en una sola
+terminal, sin Docker:
+
+```bash
+npm run start:local
+```
+
+Añade la CLI en modo `stream` con `npm run start:local -- --with-cli`.
+
 El despliegue local requiere que el nodo Hardhat ya esté ejecutándose. Para
+desplegar en `localhost`, el script usa por defecto la primera cuenta
+prefunded de Hardhat. Si necesitas usar una wallet configurada en
+`DEPLOYER_PRIVATE_KEY`, define `AUREO_LOCAL_DEFAULT_ACCOUNT=false`. Para
 servidores Linux con systemd:
 
 ```bash
@@ -239,6 +270,12 @@ La salida confirma la wallet/signer utilizado, cada evento recibido por
 WebSocket y la evaluación de la política. Con cuatro operaciones consecutivas
 de la misma dirección se espera `speedRuleTriggered: true`. La guía completa
 está en [`examples/demo-dapp/README.md`](examples/demo-dapp/README.md).
+
+En el entorno local predeterminado, `npm run demo:run` usa la primera cuenta
+prefunded de Hardhat tanto para el despliegue como para las operaciones. Para
+usar una wallet de `examples/demo-dapp/.env`, define
+`AUREO_LOCAL_DEFAULT_ACCOUNT=false` en `blockchain/.env`; esa wallet debe tener
+fondos y el rol `OPERATOR_ROLE`.
 
 La wallet del deployer (`DEPLOYER_PRIVATE_KEY`) y la wallet operativa del
 backend (`ETH_PRIVATE_KEY`) pueden ser cuentas distintas. La wallet operativa

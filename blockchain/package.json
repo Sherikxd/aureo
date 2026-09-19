@@ -7,7 +7,7 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "node": "hardhat node",
-    "deploy:local": "hardhat ignition deploy ignition/modules/AureoCore.js --network localhost"
+    "deploy:local": "hardhat ignition deploy ignition/modules/AureoCore.js --network localhost --reset"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",

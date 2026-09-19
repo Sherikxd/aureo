@@ -35,7 +35,9 @@ npm run demo:run
 
 El script despliega `AureoCore` automáticamente, inyecta
 `AUREO_CORE_ADDRESS` en la ejecución y envía cuatro operaciones. El resultado
-debe mostrar `speedViolation: true`.
+debe mostrar `speedViolation: true`. En este flujo local, tanto el despliegue
+como el demo usan la primera cuenta prefunded de Hardhat, aunque
+`examples/demo-dapp/.env` contenga una wallet configurada.
 
 ## Probar una wallet Ethereum
 
@@ -49,8 +51,16 @@ DEMO_PRIVATE_KEY=0x...
 DEMO_PUBLIC_ADDRESS=0x...
 ```
 
-La cuenta debe ser la administradora del contrato desplegado. Puedes llenar
-estos valores automáticamente con:
+La cuenta debe ser la administradora del contrato desplegado y tener fondos
+locales. Para usarla en el demo, desactiva la cuenta local predeterminada:
+
+```dotenv
+# blockchain/.env
+AUREO_LOCAL_DEFAULT_ACCOUNT=false
+```
+
+Después configura `DEMO_PRIVATE_KEY` y `DEMO_PUBLIC_ADDRESS` en
+`examples/demo-dapp/.env`. Puedes llenar estos valores automáticamente con:
 
 ```bash
 npm run setup:wallet

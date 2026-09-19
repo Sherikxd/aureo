@@ -34,6 +34,11 @@ npm run deploy:blockchain
 export AUREO_CORE_ADDRESS="$(sed -n 's/^AUREO_CORE_ADDRESS=//p' /tmp/aureo-backend.env)"
 ```
 
+En `localhost`, `deploy:blockchain` usa la primera cuenta prefunded de Hardhat
+por defecto e ignora `DEPLOYER_PRIVATE_KEY`. Para desplegar con una wallet
+personalizada, configura `AUREO_LOCAL_DEFAULT_ACCOUNT=false` en
+`blockchain/.env`; la cuenta debe tener fondos en el nodo local.
+
 Ejecuta el caso de uso:
 
 ```bash

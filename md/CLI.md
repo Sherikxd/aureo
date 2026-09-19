@@ -54,6 +54,11 @@ El comando abre un WebSocket y muestra cada veredicto recibido. Finaliza con
 aureo stream --url ws://backend.example.com/stream
 ```
 
+La CLI valida la URL antes de conectarse, ignora mensajes WebSocket que no sean
+JSON válido y devuelve código `1` si el stream se cierra inesperadamente.
+Mientras exista una solicitud MFA pendiente, los veredictos posteriores no
+abren prompts adicionales.
+
 Cuando un veredicto contiene `requiere_mfa: true`, la CLI solicita un código MFA.
 La CLI no valida credenciales ni considera autenticado el texto recibido: la
 validación debe hacerla el proveedor de identidad integrado por el backend.
@@ -75,6 +80,10 @@ La respuesta se imprime con formato JSON. Para otro backend:
 ```bash
 aureo report --url http://127.0.0.1:3000 "Resume las alertas críticas"
 ```
+
+`report` rechaza consultas vacías, aplica un timeout de 15 segundos y muestra el
+cuerpo de error HTTP cuando el backend lo devuelve. La consulta se imprime como
+JSON y nunca incluye claves privadas.
 
 Para ejecutar el escenario blockchain reproducible y generar una transferencia
 de prueba, una alerta y una comprobación de pausa:

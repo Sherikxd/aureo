@@ -3,7 +3,10 @@ import '@nomicfoundation/hardhat-ignition';
 import 'dotenv/config';
 import { Wallet } from 'ethers';
 
-const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+const privateKey =
+  process.env.AUREO_LOCAL_DEFAULT_ACCOUNT === 'true'
+    ? undefined
+    : process.env.DEPLOYER_PRIVATE_KEY;
 if (
   privateKey &&
   process.env.DEPLOYER_PUBLIC_ADDRESS &&

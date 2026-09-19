@@ -4,7 +4,7 @@ services:
       context: .
     command: npm --workspace blockchain run node -- --hostname 0.0.0.0
     ports:
-      - "8545:8545"
+      - '8545:8545'
     healthcheck:
       test:
         - CMD
@@ -28,7 +28,7 @@ services:
     volumes:
       - aureo-runtime:/runtime
     command: bash scripts/deploy-blockchain.sh localhost
-    restart: "no"
+    restart: 'no'
 
   backend:
     build:
@@ -44,13 +44,13 @@ services:
     volumes:
       - aureo-runtime:/runtime:ro
     ports:
-      - "3000:3000"
+      - '3000:3000'
     command: bash -c "set -a && source /runtime/backend.env && set +a && npm --workspace backend run start"
 
   cli:
     build:
       context: .
-    profiles: ["cli"]
+    profiles: ['cli']
     depends_on:
       backend:
         condition: service_started
