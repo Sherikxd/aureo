@@ -8,5 +8,6 @@ coverage/
 dist/
 .hardhat/
 .runtime/
+blockchain/ignition/deployments/
 *.log
 .DS_Store

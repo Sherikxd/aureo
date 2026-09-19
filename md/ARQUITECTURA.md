@@ -29,6 +29,25 @@ separa `OPERATOR_ROLE` y `COMPLIANCE_ROLE`; `Pausable` proporciona el Circuit
 Breaker para detener nuevas operaciones durante una investigación. El despliegue
 usa Hardhat Ignition, y la red local es `127.0.0.1:8545`.
 
+### Casos de uso reales
+
+- **Tesorería corporativa:** registrar el identificador de una orden o factura,
+  quién inició la operación, beneficiario y monto para conciliación posterior
+  con ERP, banco o custodio. Áureo aporta evidencia inmutable; no sustituye la
+  autorización ni la liquidación de fondos.
+- **Compliance y AML:** abrir una alerta asociada a una referencia cuando una
+  operación requiere revisión, conservar nivel, motivo y responsable, y
+  consultar el expediente desde un indexador autorizado.
+- **Control operativo:** pausar nuevas escrituras durante una investigación o
+  incidente de infraestructura y reanudar después de una decisión aprobada.
+- **Monitoreo de wallets y dapps:** consumir eventos por WebSocket, aplicar
+  políticas deterministas de velocidad/volumen y publicar un veredicto a un
+  dashboard, SIEM o flujo de MFA.
+
+El flujo demostrable está en [`DEVELOPMENT.md`](DEVELOPMENT.md). El contrato no
+custodia activos, no comprueba saldos bancarios y `bloquear_contrato` es una
+recomendación del analizador, no una orden automática de congelamiento.
+
 ### Backend
 
 El proveedor `ethers.WebSocketProvider` recibe eventos sin polling. El colector
@@ -95,7 +114,9 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 │   └── src/{index.js,wallet.js,monitor.js,policy.js}
 ├── md/ARQUITECTURA.md
 ├── md/BACKEND.md
+├── md/Ejemplos_Casos.md
 ├── md/CLI.md
+├── md/SCRIPTS.md
 ├── md/TECNOLOGIAS.md
 ├── Dockerfile
 ├── docker-compose.yml
@@ -145,4 +166,6 @@ systemd puede instalarse el servicio con `sudo npm run deploy:systemd`.
 
 La guía operativa del cliente está en [`CLI.md`](CLI.md).
 La guía paso a paso del backend está en [`BACKEND.md`](BACKEND.md).
+Los flujos reales están documentados en [`Ejemplos_Casos.md`](Ejemplos_Casos.md).
 El inventario de tecnologías está en [`TECNOLOGIAS.md`](TECNOLOGIAS.md).
+La referencia de automatización está en [`SCRIPTS.md`](SCRIPTS.md).

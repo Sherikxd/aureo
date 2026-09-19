@@ -21,6 +21,8 @@ de cada una dentro del flujo de observabilidad y compliance Web3.
 | Contenedores          | Docker Compose          | Orquestar nodo, despliegue, backend y CLI             |
 | Servicio Linux        | systemd                 | Mantener el backend en ejecución en servidores        |
 | Calidad               | ESLint + Prettier       | Lint y formato consistente                            |
+| Demo                  | `examples/demo-dapp`    | Dapp mínima para probar el SDK contra Hardhat         |
+| Automatización        | `scripts/setup-env.sh`  | Crear configuración local sin sobrescribir secretos   |
 
 ## Node.js y ESM
 

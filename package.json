@@ -8,17 +8,21 @@
     "blockchain",
     "backend",
     "cli-client",
-    "packages/*"
+    "packages/*",
+    "examples/*"
   ],
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint .",
     "blockchain:compile": "npm --workspace blockchain run compile",
     "blockchain:test": "npm --workspace blockchain run test",
+    "demo:blockchain": "node scripts/demo-blockchain.mjs",
     "backend:start": "npm --workspace backend run start",
     "cli": "npm --workspace cli-client run start",
     "sdk:lint": "npm --workspace @aureo/sdk run lint",
     "sdk:pack": "npm --workspace @aureo/sdk run pack",
+    "setup:env": "bash scripts/setup-env.sh",
+    "demo:run": "bash scripts/run-demo.sh",
     "deploy:blockchain": "bash scripts/deploy-blockchain.sh",
     "deploy:backend": "bash scripts/deploy-backend.sh",
     "deploy:systemd": "sudo bash scripts/install-systemd.sh",

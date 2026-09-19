@@ -9,7 +9,7 @@ Docker Compose sin instalar Node.js en el host.
 Desde la raíz del monorepo:
 
 ```bash
-cp cli-client/.env.example cli-client/.env
+npm run setup:env
 ```
 
 Configura las URLs del backend:
@@ -72,6 +72,16 @@ La respuesta se imprime con formato JSON. Para otro backend:
 ```bash
 aureo report --url http://127.0.0.1:3000 "Resume las alertas críticas"
 ```
+
+Para ejecutar el escenario blockchain reproducible y generar una transferencia
+de prueba, una alerta y una comprobación de pausa:
+
+```bash
+npm run demo:blockchain
+```
+
+Consulta [`DEVELOPMENT.md`](DEVELOPMENT.md) para iniciar Hardhat, desplegar el
+contrato y exportar `AUREO_CORE_ADDRESS`.
 
 ## Códigos de salida y diagnóstico
 

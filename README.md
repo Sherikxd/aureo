@@ -68,7 +68,14 @@ Para desarrollo manual:
 - npm 10 o superior.
 - Docker Engine y Docker Compose v2, recomendado para el entorno completo.
 
-Para análisis con Grok se necesita una clave `XAI_API_KEY`.
+Para crear la configuración local:
+
+```bash
+npm run setup:env
+```
+
+El script conserva `.env` existentes y crea archivos con permisos `600`. Para
+análisis con Grok se necesita una clave `XAI_API_KEY`.
 
 Para firmar operaciones Ethereum desde el backend se necesita una wallet
 operativa: `ETH_PRIVATE_KEY` y su dirección pública `ETH_PUBLIC_ADDRESS`. La
@@ -80,8 +87,7 @@ configura, el backend funciona únicamente en modo lectura.
 ### 1. Configurar secretos
 
 ```bash
-cp backend/.env.example backend/.env
-cp cli-client/.env.example cli-client/.env
+npm run setup:env
 ```
 
 Edita `backend/.env` y establece al menos:
@@ -158,9 +164,7 @@ docker compose down -v
 
 ```bash
 npm install
-cp blockchain/.env.example blockchain/.env
-cp backend/.env.example backend/.env
-cp cli-client/.env.example cli-client/.env
+npm run setup:env
 ```
 
 En `backend/.env`, configura:
@@ -192,6 +196,27 @@ servidores Linux con systemd:
 ```bash
 sudo npm run deploy:systemd
 ```
+
+## Probar el SDK con una dapp mínima
+
+El proyecto [`examples/demo-dapp`](examples/demo-dapp) despliega `AureoCore`,
+envía cuatro operaciones locales y observa sus eventos usando `@aureo/sdk`:
+
+```bash
+cp examples/demo-dapp/.env.example examples/demo-dapp/.env
+npm --workspace blockchain run node
+```
+
+En otra terminal:
+
+```bash
+npm run demo:run
+```
+
+La salida confirma la wallet/signer utilizado, cada evento recibido por
+WebSocket y la evaluación de la política. Con cuatro operaciones consecutivas
+de la misma dirección se espera `speedRuleTriggered: true`. La guía completa
+está en [`examples/demo-dapp/README.md`](examples/demo-dapp/README.md).
 
 La wallet del deployer (`DEPLOYER_PRIVATE_KEY`) y la wallet operativa del
 backend (`ETH_PRIVATE_KEY`) pueden ser cuentas distintas. La wallet operativa
@@ -298,6 +323,8 @@ npm run docker:logs
 - [Desarrollo con Docker](md/DEVELOPMENT.md)
 - [Manual de la CLI](md/CLI.md)
 - [SDK open source](packages/sdk/README.md)
+- [Demo dapp e integración](examples/demo-dapp/README.md)
+- [Scripts operativos](md/SCRIPTS.md)
 
 ## Estado de producción
 
