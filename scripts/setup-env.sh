@@ -3,13 +3,18 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORCE=false
+SKIP_WALLET=false
 
-if [[ "${1:-}" == "--force" ]]; then
-  FORCE=true
-elif [[ $# -gt 0 ]]; then
-  printf 'Uso: npm run setup:env [-- --force]\n' >&2
-  exit 2
-fi
+for argument in "$@"; do
+  case "$argument" in
+    --force) FORCE=true ;;
+    --skip-wallet) SKIP_WALLET=true ;;
+    *)
+      printf 'Uso: npm run setup:env [-- --force] [-- --skip-wallet]\n' >&2
+      exit 2
+      ;;
+  esac
+done
 
 copy_template() {
   local template="$1"
@@ -31,10 +36,13 @@ copy_template backend/.env.example backend/.env
 copy_template cli-client/.env.example cli-client/.env
 copy_template examples/demo-dapp/.env.example examples/demo-dapp/.env
 
+if [[ "$SKIP_WALLET" == false ]]; then
+  bash "$ROOT_DIR/scripts/setup-wallet.sh"
+fi
+
 cat <<'EOF'
 
 Configuración creada. Antes de iniciar:
 1. Define XAI_API_KEY en backend/.env si usarás Grok.
-2. Define ETH_PRIVATE_KEY y ETH_PUBLIC_ADDRESS solo si firmarás con una wallet.
-3. Para la demo local puedes dejar examples/demo-dapp/.env sin cambios.
+2. Para la demo local puedes dejar examples/demo-dapp/.env sin cambios.
 EOF

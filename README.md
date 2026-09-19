@@ -68,14 +68,36 @@ Para desarrollo manual:
 - npm 10 o superior.
 - Docker Engine y Docker Compose v2, recomendado para el entorno completo.
 
-Para crear la configuración local:
+Para crear la configuración local y configurar automáticamente la wallet:
 
 ```bash
 npm run setup:env
 ```
 
-El script conserva `.env` existentes y crea archivos con permisos `600`. Para
-análisis con Grok se necesita una clave `XAI_API_KEY`.
+El script conserva `.env` existentes, crea archivos con permisos `600` y ejecuta
+`setup-wallet` en cada ejecución. Para generar solo plantillas sin solicitar una
+wallet:
+
+```bash
+npm run setup:env -- --skip-wallet
+```
+
+Para análisis con Grok se necesita una clave `XAI_API_KEY`.
+
+Para volver a configurar una wallet Ethereum de desarrollo sin regenerar
+plantillas:
+
+```bash
+npm run setup:wallet
+```
+
+Para eliminar secretos y artefactos locales:
+
+```bash
+npm run clean
+```
+
+La referencia de estos scripts está en [`md/SCRIPTS.md`](md/SCRIPTS.md).
 
 Para firmar operaciones Ethereum desde el backend se necesita una wallet
 operativa: `ETH_PRIVATE_KEY` y su dirección pública `ETH_PUBLIC_ADDRESS`. La
@@ -203,7 +225,7 @@ El proyecto [`examples/demo-dapp`](examples/demo-dapp) despliega `AureoCore`,
 envía cuatro operaciones locales y observa sus eventos usando `@aureo/sdk`:
 
 ```bash
-cp examples/demo-dapp/.env.example examples/demo-dapp/.env
+npm run setup:env
 npm --workspace blockchain run node
 ```
 

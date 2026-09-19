@@ -12,6 +12,9 @@ Desde la raíz del monorepo:
 npm run setup:env
 ```
 
+Este comando también solicita la wallet Ethereum. Si la CLI solo consumirá
+streams y reportes, usa `npm run setup:env -- --skip-wallet`.
+
 Configura las URLs del backend:
 
 ```dotenv

@@ -17,6 +17,7 @@ if (!contractAddress) {
 const httpProvider = new ethers.JsonRpcProvider(httpRpcUrl);
 const configuredSigner = createEthereumSigner(httpProvider, {
   privateKey: process.env.DEMO_PRIVATE_KEY,
+  publicAddress: process.env.DEMO_PUBLIC_ADDRESS,
 });
 const signer = configuredSigner?.signer ?? (await httpProvider.getSigner(0));
 const signerAddress = await signer.getAddress();

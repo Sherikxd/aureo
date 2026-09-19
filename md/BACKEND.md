@@ -33,10 +33,10 @@ despliegues reproducibles deben usar `npm ci`.
 
 ## 2. Configurar las variables
 
-Copia la plantilla:
+Genera las plantillas:
 
 ```bash
-cp backend/.env.example backend/.env
+npm run setup:env
 ```
 
 Completa al menos estas variables:
@@ -153,7 +153,7 @@ inválido devuelve `400`; un cuerpo demasiado grande devuelve `413`.
 Con la CLI del proyecto:
 
 ```bash
-cp cli-client/.env.example cli-client/.env
+npm run setup:env
 npm run cli -- stream
 ```
 
@@ -196,7 +196,7 @@ sudo systemctl status aureo-backend
 El flujo completo de desarrollo puede iniciarse con:
 
 ```bash
-cp backend/.env.example backend/.env
+npm run setup:env
 docker compose up --build
 ```
 

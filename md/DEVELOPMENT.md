@@ -52,6 +52,9 @@ Para observar el flujo de eventos y el análisis de ventanas:
 npm run setup:env
 ```
 
+`setup:env` solicita y valida una wallet Ethereum en cada ejecución. Si el
+entorno solo necesita lectura, usa `npm run setup:env -- --skip-wallet`.
+
 Configura al menos `XAI_API_KEY` y `OPERATIONAL_RESERVE` en `backend/.env`.
 Después:
 

@@ -20,6 +20,13 @@ npm run setup:env
 npm --workspace blockchain run node
 ```
 
+El comando anterior configura también la wallet. Para usar las cuentas
+prefinanciadas de Hardhat sin solicitar una clave, ejecuta:
+
+```bash
+npm run setup:env -- --skip-wallet
+```
+
 En otra terminal:
 
 ```bash
@@ -39,10 +46,18 @@ imprime `hardhat node`:
 
 ```dotenv
 DEMO_PRIVATE_KEY=0x...
+DEMO_PUBLIC_ADDRESS=0x...
 ```
 
-La cuenta debe ser la administradora del contrato desplegado. La clave es solo
-para desarrollo local y nunca debe reutilizarse en una red pública.
+La cuenta debe ser la administradora del contrato desplegado. Puedes llenar
+estos valores automáticamente con:
+
+```bash
+npm run setup:wallet
+```
+
+La clave es solo para desarrollo local y nunca debe reutilizarse en una red
+pública.
 
 También puedes cambiar el beneficiario, el número de operaciones y el monto:
 
