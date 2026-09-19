@@ -1,0 +1,130 @@
+# Tecnologías de Áureo
+
+Referencia de las tecnologías que forman el sistema y de la responsabilidad
+de cada una dentro del flujo de observabilidad y compliance Web3.
+
+## Vista general
+
+| Capa                  | Tecnología              | Responsabilidad                                       |
+| --------------------- | ----------------------- | ----------------------------------------------------- |
+| Runtime               | Node.js 20+             | Ejecutar los workspaces ESM                           |
+| Gestión de paquetes   | npm workspaces          | Instalar dependencias y compartir el lockfile         |
+| Contratos             | Solidity + OpenZeppelin | Registrar operaciones y alertas auditables            |
+| Blockchain local      | Hardhat Network         | Nodo RPC local y entorno de pruebas                   |
+| Despliegue blockchain | Hardhat Ignition        | Desplegar `AureoCore` de forma reproducible           |
+| Acceso blockchain     | ethers.js 6             | Escuchar eventos por WebSocket y leer datos           |
+| Backend HTTP          | `node:http`             | Exponer salud y reportes                              |
+| Backend realtime      | `ws`                    | Publicar veredictos por WebSocket                     |
+| Análisis IA           | SDK OpenAI              | Consumir la API compatible de xAI                     |
+| Modelo                | xAI/Grok                | Clasificar riesgo después de las reglas deterministas |
+| Cliente               | Commander + `ws`        | CLI para stream y consultas de reportes               |
+| Contenedores          | Docker Compose          | Orquestar nodo, despliegue, backend y CLI             |
+| Servicio Linux        | systemd                 | Mantener el backend en ejecución en servidores        |
+| Calidad               | ESLint + Prettier       | Lint y formato consistente                            |
+
+## Node.js y ESM
+
+Los tres workspaces (`blockchain`, `backend` y `cli-client`) usan módulos
+ECMAScript mediante `"type": "module"`. El proyecto requiere Node.js 20 o
+superior, que aporta soporte estable para `fetch`, WebSocket del ecosistema y
+las APIs modernas usadas por las dependencias.
+
+## Blockchain y contratos
+
+### Solidity y OpenZeppelin
+
+`AureoCore` es un registro de metadatos corporativos; no transfiere fondos.
+OpenZeppelin aporta componentes probados para:
+
+- `AccessControl`: separar `OPERATOR_ROLE` y `COMPLIANCE_ROLE`.
+- `Pausable`: detener nuevas operaciones durante una investigación.
+
+Los eventos del contrato son la interfaz principal para el backend y otros
+indexadores.
+
+### Hardhat e Ignition
+
+Hardhat proporciona:
+
+- nodo local en `127.0.0.1:8545`;
+- compilación y pruebas del contrato;
+- ejecución de scripts de desarrollo.
+
+Hardhat Ignition administra el despliegue del módulo
+`blockchain/ignition/modules/AureoCore.js` y permite repetir el proceso sin
+codificar manualmente transacciones de despliegue.
+
+## Backend
+
+### ethers.js
+
+El backend usa `ethers.WebSocketProvider` para recibir eventos del contrato sin
+polling. El contrato se instancia con una ABI mínima que incluye
+`CorporateTransferRecorded` y `AlertStarted`.
+
+### Servidor HTTP nativo
+
+El backend usa `node:http` en lugar de un framework HTTP. Esto mantiene pequeño
+el servicio y deja explícitos:
+
+- `GET /health` para disponibilidad;
+- `POST /reports` para consultas;
+- el servidor HTTP compartido por el WebSocket `/stream`.
+
+El cuerpo de reportes tiene un límite de 1 MiB y el puerto se valida al iniciar.
+
+### WebSocket (`ws`)
+
+`ws` comparte el servidor HTTP y distribuye cada `risk_verdict` a los clientes
+conectados. Los últimos 100 mensajes se conservan en memoria para enviarlos al
+conectarse un nuevo cliente.
+
+### OpenAI SDK y xAI
+
+El SDK oficial de OpenAI se usa por compatibilidad de API. El backend cambia
+`baseURL` a `https://api.x.ai/v1` y selecciona el modelo mediante `XAI_MODEL`.
+La respuesta solicita JSON, pero siempre se valida localmente antes de
+publicarla. La clave se lee desde `XAI_API_KEY`.
+
+El modelo no sustituye las reglas de negocio: las reglas de velocidad y volumen
+se ejecutan antes de llamar a la IA, y el resultado de la IA no puede rebajar
+el riesgo mínimo calculado por esas reglas.
+
+## CLI
+
+Commander define los comandos y opciones de `aureo`. La dependencia `ws`
+consume `/stream`, mientras que la API HTTP nativa de Node consulta
+`/reports`. La CLI no autentica códigos MFA; esa validación debe pertenecer a un
+proveedor de identidad integrado en el backend.
+
+## Configuración y secretos
+
+`dotenv` carga variables desde los archivos `.env` de cada workspace. Las
+plantillas `.env.example` documentan nombres y valores de desarrollo, pero no
+contienen secretos. En producción, las claves deben inyectarse mediante el
+gestor de secretos o el mecanismo seguro del entorno de ejecución.
+
+## Docker y operación
+
+La imagen parte de `node:20-bookworm-slim` y usa `npm ci` para instalaciones
+reproducibles. `docker-compose.yml` coordina:
+
+1. el nodo Hardhat;
+2. el despliegue del contrato;
+3. el backend;
+4. la CLI opcional mediante el perfil `cli`.
+
+El servicio systemd permite ejecutar el backend como proceso supervisado fuera
+de Docker. En ambos casos el backend debe recibir `SIGTERM` para completar su
+cierre graceful.
+
+## Calidad y límites actuales
+
+ESLint comprueba errores comunes de JavaScript y Prettier mantiene el formato.
+El contrato tiene pruebas Hardhat; el backend actualmente se valida con lint y
+comprobaciones de sintaxis, pero todavía no cuenta con una suite automatizada de
+integración.
+
+Para producción todavía se recomienda incorporar persistencia idempotente,
+autenticación del stream, métricas, reintentos con backoff y una cola duradera
+antes de invocar al modelo.

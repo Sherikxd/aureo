@@ -1,0 +1,33 @@
+{
+  "name": "aureo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma empresarial de observabilidad, compliance e inteligencia Web3.",
+  "type": "module",
+  "workspaces": [
+    "blockchain",
+    "backend",
+    "cli-client"
+  ],
+  "scripts": {
+    "format": "prettier --write .",
+    "lint": "eslint .",
+    "blockchain:compile": "npm --workspace blockchain run compile",
+    "blockchain:test": "npm --workspace blockchain run test",
+    "backend:start": "npm --workspace backend run start",
+    "cli": "npm --workspace cli-client run start",
+    "deploy:blockchain": "bash scripts/deploy-blockchain.sh",
+    "deploy:backend": "bash scripts/deploy-backend.sh",
+    "deploy:systemd": "sudo bash scripts/install-systemd.sh",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f backend",
+    "docker:cli": "docker compose --profile cli run --rm cli"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.12.0",
+    "eslint": "^9.12.0",
+    "globals": "^15.11.0",
+    "prettier": "^3.3.3"
+  }
+}

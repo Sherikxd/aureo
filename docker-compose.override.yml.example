@@ -1,0 +1,7 @@
+services:
+  blockchain:
+    ports:
+      - "8545:8545"
+  backend:
+    ports:
+      - "3000:3000"

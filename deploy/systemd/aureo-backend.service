@@ -1,0 +1,18 @@
+[Unit]
+Description=Aureo Web3 event analyzer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__AUREO_ROOT__
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/env bash __AUREO_ROOT__/scripts/deploy-backend.sh
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+

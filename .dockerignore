@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+.runtime
+blockchain/artifacts
+blockchain/cache
+ignition/deployments
+coverage
+*.log

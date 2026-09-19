@@ -1,0 +1,67 @@
+services:
+  blockchain:
+    build:
+      context: .
+    command: npm --workspace blockchain run node -- --hostname 0.0.0.0
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - --input-type=module
+        - -e
+        - "const {JsonRpcProvider}=await import('ethers'); await new JsonRpcProvider('http://127.0.0.1:8545').getBlockNumber()"
+      interval: 3s
+      timeout: 5s
+      retries: 20
+
+  deploy:
+    build:
+      context: .
+    depends_on:
+      blockchain:
+        condition: service_healthy
+    environment:
+      HARDHAT_RPC_URL: http://blockchain:8545
+      AUREO_RUNTIME_ENV: /runtime/backend.env
+    volumes:
+      - aureo-runtime:/runtime
+    command: bash scripts/deploy-blockchain.sh localhost
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+    depends_on:
+      deploy:
+        condition: service_completed_successfully
+    env_file:
+      - ./backend/.env
+    environment:
+      BLOCKCHAIN_WS_URL: ws://blockchain:8545
+      BACKEND_PORT: 3000
+    volumes:
+      - aureo-runtime:/runtime:ro
+    ports:
+      - "3000:3000"
+    command: bash -c "set -a && source /runtime/backend.env && set +a && npm --workspace backend run start"
+
+  cli:
+    build:
+      context: .
+    profiles: ["cli"]
+    depends_on:
+      backend:
+        condition: service_started
+    env_file:
+      - ./cli-client/.env
+    environment:
+      AUREO_BACKEND_URL: http://backend:3000
+      AUREO_STREAM_URL: ws://backend:3000/stream
+    command: npm --workspace cli-client run start -- stream
+    stdin_open: true
+    tty: true
+
+volumes:
+  aureo-runtime:
