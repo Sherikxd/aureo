@@ -1,13 +1,70 @@
+# Dependencies
 node_modules/
+.pnp/
+.pnp.js
+
+# Local environment and secrets
 .env
 .env.*
 !.env.example
+!.env.*.example
+*.local
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Build output and package artifacts
+dist/
+build/
+out/
+lib/
+*.tgz
+
+# Hardhat and EVM tooling
 artifacts/
 cache/
-coverage/
-dist/
 .hardhat/
-.runtime/
 blockchain/ignition/deployments/
+typechain-types/
+coverage/
+coverage.json
+
+# Runtime state and local databases
+.runtime/
+runtime/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs, reports, and temporary files
 *.log
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+report/
+reports/
+tmp/
+temp/
+.cache/
+
+# Test and tool state
+.nyc_output/
+.eslintcache
+.terraform/
+
+# Operating system and editor files
 .DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.swp
+*.swo
+*~
