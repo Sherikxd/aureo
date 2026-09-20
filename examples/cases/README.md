@@ -26,7 +26,7 @@ muestra sus transacciones, bloques, referencias, acciones de compliance y
 métricas calculadas directamente por `@aureo/sdk`.
 
 Estos casos son simulaciones locales: no mueven fondos reales, no llaman a
-Grok, no usan el backend y no conectan con una red pública. Las transacciones sí
+Groq/xAI, no usan el backend y no conectan con una red pública. Las transacciones sí
 son reales dentro de la blockchain local y ejercitan las validaciones,
 eventos, roles y estado de `AureoCore`.
 Las métricas del SDK incluyen operaciones, monto total, riesgo, MFA y

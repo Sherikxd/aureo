@@ -93,6 +93,11 @@ son locales al proceso, se reinician al crear un nuevo cliente y no requieren
 backend, WebSocket ni xAI. `recordVerdict` permite añadir un veredicto externo
 al conteo cuando una aplicación también consume el backend.
 
+El colector mantiene una tendencia EMA por iniciador con `alpha=0.3` por
+defecto. Puedes consultar `aureo.metrics.getEMA(address)` o
+`aureo.metrics.getEMAHistory()`; la EMA es una señal operativa y no reemplaza
+la auditoría de los montos on-chain.
+
 ```js
 import { createEthereumMonitor, evaluateEthereumPolicy } from '@aureo/sdk';
 

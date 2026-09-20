@@ -30,6 +30,8 @@
     "metrics:realtime": "npm --workspace @aureo/realtime-metrics run start",
     "start:local": "bash scripts/start-local.sh",
     "deploy:blockchain": "bash scripts/deploy-blockchain.sh",
+    "deploy:hashkey": "bash scripts/deploy-blockchain.sh hashkey",
+    "hashkey:check": "bash scripts/check-hashkey.sh",
     "deploy:backend": "bash scripts/deploy-backend.sh",
     "deploy:systemd": "sudo bash scripts/install-systemd.sh",
     "docker:up": "docker compose up --build",

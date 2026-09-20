@@ -65,6 +65,7 @@ program
   .description('Comprueba la disponibilidad del backend y su wallet')
   .option('-u, --url <url>', 'API del backend', process.env.AUREO_BACKEND_URL)
   .option('--json', 'Imprime la respuesta completa en JSON')
+  .option('--metrics', 'Muestra las métricas Prometheus resumidas')
   .action(async (options) => {
     const url = requireUrl(options.url, 'AUREO_BACKEND_URL').replace(/\/$/, '');
     try {
@@ -73,11 +74,15 @@ program
         fetchJson(`${url}/wallet`),
       ]);
       const result = { status: 'ok', backend: url, health, wallet };
+      if (options.metrics) {
+        result.metrics = await fetch(`${url}/metrics`).then((response) => response.text());
+      }
       if (options.json) printPayload(result, 'json');
       else {
         console.log(`Backend: ${url}`);
         console.log(`Estado: ${health?.status ?? 'desconocido'}`);
         console.log(`Wallet: ${wallet?.configured ? wallet.address : 'no configurada'}`);
+        if (options.metrics) console.log(result.metrics);
       }
     } catch (error) {
       console.error(`No se pudo comprobar el backend: ${error.message}`);
@@ -91,6 +96,7 @@ program
   .option('-u, --url <url>', 'WebSocket del backend', process.env.AUREO_STREAM_URL)
   .option('-f, --format <format>', 'Formato de salida: json o pretty', 'json')
   .option('--no-mfa-prompt', 'No solicitar MFA de forma interactiva')
+  .option('--metrics', 'Muestra un resumen de veredictos recibidos')
   .action((options) => {
     const url = requireUrl(options.url, 'AUREO_STREAM_URL');
     if (!['json', 'pretty'].includes(options.format)) {
@@ -99,7 +105,15 @@ program
     const socket = new WebSocket(url);
     let mfaPromptActive = false;
     let shuttingDown = false;
-    socket.on('open', () => console.log(`Conectado a ${url}. Ctrl+C para salir.`));
+    const counts = { total: 0, byRisk: {} };
+    socket.on('open', () => {
+      console.log(`Conectado a ${url}. Ctrl+C para salir.`);
+      console.log(
+        `Umbrales activos: velocidad=${process.env.SPEED_THRESHOLD ?? 3} operaciones, ` +
+          `ventana=${process.env.SPEED_BLOCK_WINDOW ?? 4} bloques, ` +
+          `volumen=${process.env.VOLUME_MULTIPLIER ?? 3}x`,
+      );
+    });
     socket.on('message', async (message) => {
       let payload;
       try {
@@ -109,6 +123,12 @@ program
         return;
       }
       printPayload(payload, options.format);
+      if (options.metrics && payload.verdict) {
+        counts.total += 1;
+        const risk = payload.verdict.nivel_riesgo ?? 'desconocido';
+        counts.byRisk[risk] = (counts.byRisk[risk] ?? 0) + 1;
+        console.log(`Métricas: total=${counts.total} riesgo=${JSON.stringify(counts.byRisk)}`);
+      }
       if (!options.mfaPrompt || !payload.verdict?.requiere_mfa || mfaPromptActive) return;
       mfaPromptActive = true;
       const readline = createInterface({ input, output });
@@ -147,6 +167,11 @@ program
   .argument('<query>', 'Pregunta para el reporte')
   .option('-u, --url <url>', 'API del backend', process.env.AUREO_BACKEND_URL)
   .option('-f, --format <format>', 'Formato de salida: json o pretty', 'json')
+  .option('--filter <value>', 'Filtro risk:<nivel> o mfa:<true|false>')
+  .option('--since <date>', 'Fecha ISO inicial')
+  .option('--page <number>', 'Página', '1')
+  .option('--size <number>', 'Tamaño de página', '20')
+  .option('--export <format>', 'Exporta como csv')
   .action(async (query, options) => {
     const url = requireUrl(options.url, 'AUREO_BACKEND_URL').replace(/\/$/, '');
     if (!query.trim()) throw new Error('La consulta no puede estar vacía.');
@@ -157,10 +182,38 @@ program
       const payload = await fetchJson(`${url}/reports`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({
+          query,
+          filters: {
+            ...(options.filter?.startsWith('risk:')
+              ? { risk_level: options.filter.slice(5) }
+              : {}),
+            ...(options.filter?.startsWith('mfa:')
+              ? { mfa: options.filter.slice(4) === 'true' }
+              : {}),
+            ...(options.since ? { from: options.since } : {}),
+            page: Number(options.page),
+            pageSize: Number(options.size),
+          },
+        }),
       });
+      if (options.export === 'csv') {
+        console.log('receivedAt,nivel_riesgo,requiere_mfa,bloquear_contrato,motivo');
+        for (const item of payload.verdicts ?? []) {
+          const verdict = item.verdict ?? {};
+          console.log([
+            item.receivedAt,
+            verdict.nivel_riesgo,
+            verdict.requiere_mfa,
+            verdict.bloquear_contrato,
+            JSON.stringify(verdict.motivo ?? ''),
+          ].join(','));
+        }
+        return;
+      }
       if (options.format === 'pretty') {
         console.log(`Consulta: ${payload.query}`);
+        console.log(`Página ${payload.page} de ${payload.totalPages} · total=${payload.total}`);
         console.log(`Veredictos recibidos: ${payload.verdicts?.length ?? 0}`);
         for (const item of payload.verdicts ?? []) printPayload(item, 'pretty');
       } else printPayload(payload, 'json');

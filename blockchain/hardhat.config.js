@@ -15,6 +15,21 @@ if (
   throw new Error('DEPLOYER_PUBLIC_ADDRESS no coincide con DEPLOYER_PRIVATE_KEY.');
 }
 
+const hashKeyPresets = {
+  testnet: { rpcUrl: 'https://testnet.hsk.xyz', chainId: 133 },
+  mainnet: { rpcUrl: 'https://mainnet.hsk.xyz', chainId: 177 },
+};
+const selectedHashKey = hashKeyPresets[process.env.HASHKEY_NETWORK ?? 'testnet'];
+const hashKeyRpcUrl = process.env.HASHKEY_RPC_URL ?? selectedHashKey?.rpcUrl;
+const hashKeyChainId = process.env.HASHKEY_CHAIN_ID ?? selectedHashKey?.chainId;
+const hashKeyNetwork = hashKeyRpcUrl && hashKeyChainId
+  ? {
+      url: hashKeyRpcUrl,
+      chainId: parseChainId(hashKeyChainId),
+      ...(privateKey ? { accounts: [privateKey] } : {}),
+    }
+  : {};
+
 /** @type import('hardhat/config').HardhatUserConfig */
 export default {
   solidity: {
@@ -29,6 +44,7 @@ export default {
       url: process.env.HARDHAT_RPC_URL || 'http://127.0.0.1:8545',
       ...(privateKey ? { accounts: [privateKey] } : {}),
     },
+    ...(Object.keys(hashKeyNetwork).length ? { hashkey: hashKeyNetwork } : {}),
   },
   paths: {
     sources: './contracts',
@@ -37,3 +53,11 @@ export default {
     artifacts: './artifacts',
   },
 };
+
+function parseChainId(value) {
+  const chainId = Number(value);
+  if (!Number.isSafeInteger(chainId) || chainId <= 0) {
+    throw new Error('HASHKEY_CHAIN_ID debe ser un entero positivo.');
+  }
+  return chainId;
+}

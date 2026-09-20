@@ -60,7 +60,9 @@ npm run setup:env
 `setup:env` solicita y valida una wallet Ethereum en cada ejecución. Si el
 entorno solo necesita lectura, usa `npm run setup:env -- --skip-wallet`.
 
-Configura al menos `XAI_API_KEY` y `OPERATIONAL_RESERVE` en `backend/.env`.
+Configura `GROQ_API_KEY` o `XAI_API_KEY` si quieres análisis LLM y
+`OPERATIONAL_RESERVE` en `backend/.env`. Sin claves, el backend usa el modo
+determinista degradado.
 Después:
 
 ```bash
@@ -100,3 +102,26 @@ npm run docker:down
 ```
 
 No uses claves reales en archivos `.env` del demo ni en comandos compartidos.
+
+## HSKChain Testnet
+
+Para probar el despliegue en HSKChain Testnet, configura
+`HASHKEY_NETWORK=testnet`, `DEPLOYER_PRIVATE_KEY` y
+`AUREO_LOCAL_DEFAULT_ACCOUNT=false` en `blockchain/.env`. Usa una cuenta con
+fondos de testnet y ejecuta:
+
+```bash
+npm run deploy:hashkey
+```
+
+Después define en `backend/.env` la dirección desplegada, el RPC de testnet y
+un número de confirmaciones, por ejemplo `BLOCKCHAIN_CONFIRMATIONS=2`.
+Valida primero la conexión con `npm run hashkey:check`. Los detalles, el flujo
+completo y el ejemplo read-only están en
+[`HASHKEY.md`](HASHKEY.md) y
+[`examples/hashkey-integration/README.md`](../examples/hashkey-integration/README.md).
+
+Los casos `npm run demo:case -- normal|speed|volume` son exclusivamente
+locales: no envían transacciones a HSKChain. Para integrar una aplicación
+real, usa el SDK con el RPC y la dirección del contrato de HSKChain del
+ejemplo dedicado.

@@ -17,8 +17,24 @@ const maxBodyBytes = 1_048_576;
 const maxBufferedEvents = 10_000;
 const maxVerdicts = 100;
 const pollIntervalMs = 5_000;
+const confirmations = parseNonNegativeInteger(process.env.BLOCKCHAIN_CONFIRMATIONS, 0);
+const maxBlockRange = parsePositiveInteger(process.env.BLOCKCHAIN_MAX_BLOCK_RANGE, 2_000);
 const stateFile = resolve(process.env.BACKEND_STATE_FILE ?? '.runtime/backend-state.json');
 const streamClients = new Set();
+const alertWebhookUrls = (process.env.ALERT_WEBHOOK_URLS ?? '')
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean);
+const integrationMetrics = {
+  verdictsTotal: 0,
+  verdictsByRisk: { bajo: 0, medio: 0, alto: 0, critico: 0 },
+  llmCalls: 0,
+  llmSuccess: 0,
+  llmErrors: 0,
+  eventsProcessed: 0,
+  eventsDiscarded: 0,
+  windowAnalyses: 0,
+};
 
 /**
  * Starts the WebSocket event ingestion and periodic risk analysis.
@@ -40,7 +56,13 @@ export async function start() {
   const contract = new ethers.Contract(address, ABI, provider);
   const ethWallet = createEthWallet(provider);
   const signedContract = ethWallet ? contract.connect(ethWallet.wallet) : null;
-  const analyzer = createAnalyzer();
+  const analyzer = createAnalyzer({
+    onMetric: (name) => {
+      if (name === 'llm_call') integrationMetrics.llmCalls += 1;
+      if (name === 'llm_success') integrationMetrics.llmSuccess += 1;
+      if (name === 'llm_error') integrationMetrics.llmErrors += 1;
+    },
+  });
   const httpServer = createServer(async (request, response) => {
     const requestUrl = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
     if (request.method === 'GET' && requestUrl.pathname === '/health') {
@@ -60,13 +82,19 @@ export async function start() {
       });
       return;
     }
+    if (request.method === 'GET' && requestUrl.pathname === '/metrics') {
+      response.writeHead(200, { 'content-type': 'text/plain; version=0.0.4; charset=utf-8' });
+      response.end(formatPrometheusMetrics(integrationMetrics));
+      return;
+    }
     if (request.method === 'POST' && requestUrl.pathname === '/reports') {
       try {
         const payload = JSON.parse(await readRequestBody(request));
         if (!payload || typeof payload.query !== 'string' || !payload.query.trim()) {
           throw new Error('query debe ser un texto no vacío.');
         }
-        sendJson(response, 200, { query: payload.query.trim(), verdicts });
+        const result = paginateVerdicts(verdicts, payload.filters ?? {});
+        sendJson(response, 200, { query: payload.query.trim(), ...result });
       } catch (error) {
         sendJson(response, error.code === 'PAYLOAD_TOO_LARGE' ? 413 : 400, {
           error: error.message,
@@ -104,11 +132,20 @@ export async function start() {
         historicalAmounts,
         operationalReserve: process.env.OPERATIONAL_RESERVE || undefined,
       });
+      integrationMetrics.windowAnalyses += 1;
       windowAnalyzed = true;
       const message = { type: 'risk_verdict', verdict, receivedAt: new Date().toISOString() };
       verdicts.push(message);
+      integrationMetrics.verdictsTotal += 1;
+      if (integrationMetrics.verdictsByRisk[verdict.nivel_riesgo] !== undefined) {
+        integrationMetrics.verdictsByRisk[verdict.nivel_riesgo] += 1;
+      }
+      integrationMetrics.eventsProcessed += window.length;
       if (verdicts.length > maxVerdicts) verdicts.shift();
       const serialized = JSON.stringify(message);
+      if (['alto', 'critico'].includes(verdict.nivel_riesgo)) {
+        await notifyAlertWebhooks(verdict);
+      }
       for (const client of streamClients) {
         if (client.readyState === 1) {
           try {
@@ -168,19 +205,25 @@ export async function start() {
     polling = true;
     try {
       const latestBlock = await provider.getBlockNumber();
+      const confirmedBlock = latestBlock - confirmations;
+      if (confirmedBlock < 0) return;
       const fromBlock = Math.max(lastScannedBlock + 1, 0);
-      if (fromBlock <= latestBlock) {
+      const toBlock = Math.min(confirmedBlock, fromBlock + maxBlockRange - 1);
+      if (fromBlock <= toBlock) {
         const logs = await provider.getLogs({
           address,
           topics: [transferTopic],
           fromBlock,
-          toBlock: latestBlock,
+          toBlock,
         });
         for (const log of logs) {
           const parsed = contract.interface.parseLog(log);
           if (!parsed) continue;
           const eventKey = `${log.transactionHash}:${log.index}`;
-          if (events.some((item) => item.eventKey === eventKey)) continue;
+          if (events.some((item) => item.eventKey === eventKey)) {
+            integrationMetrics.eventsDiscarded += 1;
+            continue;
+          }
           events.push({
             eventKey,
             type: 'CorporateTransferRecorded',
@@ -192,7 +235,7 @@ export async function start() {
             blockNumber: log.blockNumber,
           });
         }
-        lastScannedBlock = latestBlock;
+        lastScannedBlock = toBlock;
         persistState();
       }
     } finally {
@@ -245,6 +288,91 @@ function parsePort(value) {
     throw new Error('BACKEND_PORT debe ser un puerto entero entre 1 y 65535.');
   }
   return port;
+}
+
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function formatPrometheusMetrics(metrics) {
+  return [
+    '# HELP verdicts_total Total de veredictos publicados.',
+    '# TYPE verdicts_total counter',
+    `verdicts_total ${metrics.verdictsTotal}`,
+    '# TYPE verdicts_by_risk gauge',
+    ...Object.entries(metrics.verdictsByRisk).map(([risk, value]) => `verdicts_by_risk{risk="${risk}"} ${value}`),
+    '# TYPE llm_calls_total counter',
+    `llm_calls_total ${metrics.llmCalls}`,
+    '# TYPE llm_success_total counter',
+    `llm_success_total ${metrics.llmSuccess}`,
+    '# TYPE llm_errors_total counter',
+    `llm_errors_total ${metrics.llmErrors}`,
+    '# TYPE events_processed_total counter',
+    `events_processed_total ${metrics.eventsProcessed}`,
+    '# TYPE events_discarded_total counter',
+    `events_discarded_total ${metrics.eventsDiscarded}`,
+    '# TYPE window_analyses_total counter',
+    `window_analyses_total ${metrics.windowAnalyses}`,
+    '',
+  ].join('\n');
+}
+
+async function notifyAlertWebhooks(verdict) {
+  const payload = JSON.stringify({
+    nivel_riesgo: verdict.nivel_riesgo,
+    motivo: verdict.motivo,
+    timestamp: new Date().toISOString(),
+  });
+  await Promise.all(
+    alertWebhookUrls.map(async (url) => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: payload,
+            signal: AbortSignal.timeout(5_000),
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return;
+        } catch (error) {
+          if (attempt === 2) {
+            console.error(`Webhook de alerta falló (${url}): ${error.message}`);
+          } else {
+            await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+          }
+        }
+      }
+    }),
+  );
+}
+
+function paginateVerdicts(items, filters) {
+  const page = parsePositiveInteger(filters.page, 1);
+  const pageSize = Math.min(parsePositiveInteger(filters.pageSize, 20), 100);
+  const filtered = items.filter((item) => {
+    const verdict = item.verdict ?? {};
+    if (filters.risk_level && verdict.nivel_riesgo !== filters.risk_level) return false;
+    if (filters.mfa !== undefined && Boolean(verdict.requiere_mfa) !== Boolean(filters.mfa)) return false;
+    if (filters.from && item.receivedAt < filters.from) return false;
+    if (filters.to && item.receivedAt > filters.to) return false;
+    if (filters.initiator && !JSON.stringify(verdict).toLowerCase().includes(String(filters.initiator).toLowerCase())) return false;
+    return true;
+  });
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  return {
+    verdicts: filtered.slice((page - 1) * pageSize, page * pageSize),
+    page,
+    pageSize,
+    total: filtered.length,
+    totalPages,
+  };
 }
 
 function parseInterval(value) {

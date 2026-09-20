@@ -11,6 +11,7 @@ de cada una dentro del flujo de observabilidad y compliance Web3.
 | Gestión de paquetes   | npm workspaces          | Instalar dependencias y compartir el lockfile         |
 | Contratos             | Solidity + OpenZeppelin | Registrar operaciones y alertas auditables            |
 | Blockchain local      | Hardhat Network         | Nodo RPC local y entorno de pruebas                   |
+| Red EVM externa       | HSKChain Testnet/Mainnet | Despliegue y operación en redes HashKey               |
 | Despliegue blockchain | Hardhat Ignition        | Desplegar `AureoCore` de forma reproducible           |
 | Acceso blockchain     | ethers.js 6             | Consultar logs RPC, recuperar eventos y leer datos    |
 | Backend HTTP          | `node:http`             | Exponer salud y reportes                              |
@@ -56,6 +57,11 @@ Hardhat proporciona:
 Hardhat Ignition administra el despliegue del módulo
 `blockchain/ignition/modules/AureoCore.js` y permite repetir el proceso sin
 codificar manualmente transacciones de despliegue.
+
+Para HSKChain, Hardhat usa presets configurables para Testnet (`chainId 133`,
+`https://testnet.hsk.xyz`) y Mainnet (`chainId 177`,
+`https://mainnet.hsk.xyz`). Las claves y fondos deben pertenecer a la red
+seleccionada.
 
 ## Backend
 

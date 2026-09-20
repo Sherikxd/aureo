@@ -10,9 +10,13 @@ import { evaluateEthereumPolicy } from './policy.js';
  *   reset: () => void
  * }}
  */
-export function createMetrics() {
+export function createMetrics(options = {}) {
   const transfers = [];
   const history = new Map();
+  const emaHistory = new Map();
+  const emaAlpha = Number.isFinite(options.emaAlpha) && options.emaAlpha > 0 && options.emaAlpha <= 1
+    ? options.emaAlpha
+    : 0.3;
   const snapshot = {
     transfers: 0,
     totalAmount: 0n,
@@ -30,9 +34,13 @@ export function createMetrics() {
       const pendingTransfers = [...transfers, transfer];
       const policy = evaluateEthereumPolicy(pendingTransfers, {
         historicalAmounts: new Map([[initiator, previousHistory]]),
+        ...options,
       });
       transfers.push(transfer);
       history.set(initiator, [...previousHistory, transfer.amount].slice(-100));
+      const amount = Number(transfer.amount);
+      const previousEma = emaHistory.get(initiator) ?? amount;
+      emaHistory.set(initiator, previousEma + emaAlpha * (amount - previousEma));
       snapshot.transfers += 1;
       snapshot.totalAmount += BigInt(transfer.amount);
       snapshot.lastPolicy = policy;
@@ -62,9 +70,24 @@ export function createMetrics() {
         lastVerdict: snapshot.lastVerdict ? { ...snapshot.lastVerdict } : null,
       };
     },
+    getVerdicts(filters = {}) {
+      const items = snapshot.lastVerdict ? [snapshot.lastVerdict] : [];
+      return items.filter((verdict) => {
+        if (filters.risk_level && verdict.nivel_riesgo !== filters.risk_level) return false;
+        if (filters.mfa !== undefined && Boolean(verdict.requiere_mfa) !== Boolean(filters.mfa)) return false;
+        return true;
+      });
+    },
+    getEMA(address) {
+      return emaHistory.get(address.toLowerCase()) ?? null;
+    },
+    getEMAHistory() {
+      return Object.fromEntries(emaHistory);
+    },
     reset() {
       transfers.length = 0;
       history.clear();
+      emaHistory.clear();
       snapshot.transfers = 0;
       snapshot.totalAmount = 0n;
       snapshot.byRisk = {};

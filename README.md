@@ -72,7 +72,7 @@ adaptación. Permite a una dapp:
 | Componente      | Responsabilidad                                                                 |
 | --------------- | ------------------------------------------------------------------------------- |
 | `blockchain/`   | Contrato `AureoCore`, roles de acceso, eventos empresariales y Circuit Breaker. |
-| `backend/`      | Ingesta RPC, ventanas de análisis, reglas de riesgo y consulta a xAI.           |
+| `backend/`      | Ingesta RPC, ventanas de análisis, reglas de riesgo y consulta a Groq/xAI.      |
 | `packages/sdk/` | SDK reusable de wallet, monitoring, policies y métricas locales.                |
 | `scripts/`      | Despliegue local, demos de casos, despliegue Docker y servicio systemd.           |
 | `examples/`     | Dapp mínima y casos operativos reproducibles contra Hardhat.                     |
@@ -126,11 +126,25 @@ Los casos ejecutables y su explicación proceso por proceso están en
 [`examples/cases/README.md`](examples/cases/README.md).
 La integración de métricas en tiempo real está en
 [`examples/realtime-metrics/README.md`](examples/realtime-metrics/README.md).
+La integración configurable con HashKey Chain está en
+[`md/HASHKEY.md`](md/HASHKEY.md).
+Un ejemplo de integración read-only con HSKChain está en
+[`examples/hashkey-integration/README.md`](examples/hashkey-integration/README.md).
 
 Para firmar operaciones Ethereum desde el backend se necesita una wallet
 operativa: `ETH_PRIVATE_KEY` y su dirección pública `ETH_PUBLIC_ADDRESS`. La
 dirección pública se valida contra la clave privada al iniciar. Si no se
 configura, el backend funciona únicamente en modo lectura.
+
+### Redes compatibles
+
+Además de Hardhat local, Áureo incluye configuración para HSKChain:
+
+- Testnet: chain ID `133`, RPC `https://testnet.hsk.xyz`.
+- Mainnet: chain ID `177`, RPC `https://mainnet.hsk.xyz`.
+
+Consulta [`md/HASHKEY.md`](md/HASHKEY.md) para configurar la wallet, desplegar
+`AureoCore` y ajustar confirmaciones y rangos RPC.
 
 ## Inicio rápido con Docker
 
@@ -228,6 +242,7 @@ XAI_API_KEY=tu-clave-de-xai
 XAI_BASE_URL=https://api.x.ai/v1
 XAI_MODEL=grok-4.6
 LLM_PROVIDER=auto
+LLM_FALLBACK_PROVIDERS=xai,groq
 GROQ_API_KEY=tu-clave-de-groq
 GROQ_BASE_URL=https://api.groq.com/openai/v1
 GROQ_MODEL=llama-3.3-70b-versatile

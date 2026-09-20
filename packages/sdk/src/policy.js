@@ -10,18 +10,20 @@
  * Evaluates reusable, model-independent transaction policies.
  *
  * @param {Array<{initiator: string, amount: string|number|bigint, blockNumber: number}>} transfers
- * @param {{historicalAmounts?: Map<string, Array<string|number|bigint>>|Record<string, Array<string|number|bigint>>, operationalReserve?: string|number|bigint}} [context]
+ * @param {{historicalAmounts?: Map<string, Array<string|number|bigint>>|Record<string, Array<string|number|bigint>>, operationalReserve?: string|number|bigint, speedThreshold?: number, speedBlockWindow?: number, volumeMultiplier?: number}} [context]
  * @returns {PolicyResult}
  */
 export function evaluateEthereumPolicy(transfers, context = {}) {
   if (!Array.isArray(transfers)) throw new Error('transfers debe ser un arreglo.');
   const reasons = [];
-  const speedViolation = hasSpeedViolation(transfers);
+  const speedViolation = hasSpeedViolation(transfers, context);
   const volumeViolation = transfers.some((transfer) => {
     const amount = toAmount(transfer.amount);
     const history = getHistory(context.historicalAmounts, transfer.initiator);
     const historyTotal = history.reduce((sum, value) => sum + value, 0n);
-    const exceedsHistory = history.length > 0 && amount * BigInt(history.length) > historyTotal * 3n;
+    const volumeMultiplier = toPositiveNumber(context.volumeMultiplier, 3);
+    const exceedsHistory =
+      history.length > 0 && amount * BigInt(history.length) > historyTotal * BigInt(volumeMultiplier);
     const reserve = context.operationalReserve === undefined
       ? null
       : toAmount(context.operationalReserve);
@@ -32,7 +34,10 @@ export function evaluateEthereumPolicy(transfers, context = {}) {
     reasons.push('Más de 3 operaciones de una dirección en 5 bloques consecutivos.');
   }
   if (volumeViolation) {
-    reasons.push('El volumen supera 300% del histórico o la reserva operativa; requiere MFA.');
+    const multiplier = toPositiveNumber(context.volumeMultiplier, 3);
+    reasons.push(
+      `El volumen supera ${multiplier * 100}% del histórico o la reserva operativa; requiere MFA.`,
+    );
   }
   return {
     speedViolation,
@@ -42,7 +47,7 @@ export function evaluateEthereumPolicy(transfers, context = {}) {
   };
 }
 
-function hasSpeedViolation(transfers) {
+function hasSpeedViolation(transfers, context) {
   const blocksByAddress = new Map();
   for (const transfer of transfers) {
     const block = Number(transfer.blockNumber);
@@ -52,10 +57,21 @@ function hasSpeedViolation(transfers) {
   }
   return [...blocksByAddress.values()].some((blocks) => {
     blocks.sort((a, b) => a - b);
-    return blocks.some(
-      (block, index) => blocks[index + 3] !== undefined && blocks[index + 3] - block <= 4,
-    );
+    const threshold = toPositiveInteger(context.speedThreshold, 3);
+    const blockWindow = toPositiveInteger(context.speedBlockWindow, 4);
+    return blocks.some((block, index) => {
+      const target = blocks[index + threshold];
+      return target !== undefined && target - block <= blockWindow;
+    });
   });
+}
+
+function toPositiveInteger(value, fallback) {
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function toPositiveNumber(value, fallback) {
+  return Number.isSafeInteger(value) && value > 0 ? value : fallback;
 }
 
 function toAmount(value) {

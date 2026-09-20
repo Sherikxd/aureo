@@ -25,6 +25,25 @@ if [[ "$NETWORK" == "localhost" ]]; then
     printf 'No hay un nodo local disponible. Ejecuta: npm --workspace blockchain run node\n' >&2
     exit 1
   }
+elif [[ "$NETWORK" == "hashkey" ]]; then
+  if [[ -z "${HASHKEY_RPC_URL:-}" && "${HASHKEY_NETWORK:-}" == "testnet" ]]; then
+    export HASHKEY_RPC_URL=https://testnet.hsk.xyz
+  elif [[ -z "${HASHKEY_RPC_URL:-}" && "${HASHKEY_NETWORK:-}" == "mainnet" ]]; then
+    export HASHKEY_RPC_URL=https://mainnet.hsk.xyz
+  fi
+  if [[ -z "${HASHKEY_CHAIN_ID:-}" && "${HASHKEY_NETWORK:-}" == "testnet" ]]; then
+    export HASHKEY_CHAIN_ID=133
+  elif [[ -z "${HASHKEY_CHAIN_ID:-}" && "${HASHKEY_NETWORK:-}" == "mainnet" ]]; then
+    export HASHKEY_CHAIN_ID=177
+  fi
+  if [[ -z "${HASHKEY_RPC_URL:-}" || -z "${HASHKEY_CHAIN_ID:-}" ]]; then
+    printf 'HASHKEY_NETWORK debe ser testnet o mainnet, o define RPC y chain ID.\n' >&2
+    exit 1
+  fi
+  if [[ -z "${DEPLOYER_PRIVATE_KEY:-}" || "${AUREO_LOCAL_DEFAULT_ACCOUNT:-false}" == true ]]; then
+    printf 'Configura DEPLOYER_PRIVATE_KEY y AUREO_LOCAL_DEFAULT_ACCOUNT=false para HashKey.\n' >&2
+    exit 1
+  fi
 fi
 
 npm --workspace blockchain run compile
@@ -35,13 +54,18 @@ else
 fi
 
 if [[ -n "${AUREO_RUNTIME_ENV:-}" ]]; then
+  deployment_chain_id=31337
+  if [[ "$NETWORK" == "hashkey" ]]; then
+    deployment_chain_id="$HASHKEY_CHAIN_ID"
+  fi
   address="$(
     node --input-type=module -e "
       import { readFileSync } from 'node:fs';
-      const file = 'blockchain/ignition/deployments/chain-31337/deployed_addresses.json';
+      const chainId = process.argv[1];
+      const file = \`blockchain/ignition/deployments/chain-\${chainId}/deployed_addresses.json\`;
       const deployed = JSON.parse(readFileSync(file, 'utf8'));
       process.stdout.write(deployed['AureoCoreModule#AureoCore'] ?? '');
-    "
+    " "$deployment_chain_id"
   )"
   if [[ -z "$address" ]]; then
     printf 'No se pudo resolver la dirección desplegada de AureoCore.\n' >&2

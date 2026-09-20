@@ -75,6 +75,7 @@ Variables opcionales:
 | Variable              |        Predeterminado | Uso                                     |
 | --------------------- | --------------------: | --------------------------------------- |
 | `LLM_PROVIDER`        | `auto`                | `groq`, `xai`, `none` o selección automática |
+| `LLM_FALLBACK_PROVIDERS` | `xai,groq` | Proveedores alternativos separados por coma |
 | `GROQ_BASE_URL`       | `https://api.groq.com/openai/v1` | Endpoint de Groq |
 | `GROQ_MODEL`          | `llama-3.3-70b-versatile` | Modelo usado en Groq |
 | `LLM_TIMEOUT_MS`      |              `15000` | Timeout común de proveedores (ms) |
@@ -86,9 +87,16 @@ Variables opcionales:
 | `XAI_MAX_RETRIES`      |                  `2` | Reintentos después de un fallo          |
 | `XAI_RETRY_DELAY_MS`   |                `500` | Espera inicial entre reintentos (ms)    |
 | `OPERATIONAL_RESERVE` |                 vacío | Umbral de volumen que activa MFA        |
+| `SPEED_THRESHOLD`     |                      `3` | Operaciones que activan velocidad       |
+| `SPEED_BLOCK_WINDOW`  |                      `4` | Diferencia máxima de bloques             |
+| `VOLUME_MULTIPLIER`   |                      `3` | Multiplicador del histórico              |
+| `EMA_ALPHA`           |                    `0.3` | Alpha de tendencia histórica             |
+| `ALERT_WEBHOOK_URLS`  | vacío | URLs separadas por coma para alertas altas/críticas |
 | `BACKEND_PORT`        |                `3000` | Puerto HTTP y WebSocket                 |
 | `BACKEND_WINDOW_MS`   |              `60000` | Ventana de agrupación antes del análisis |
 | `BLOCKCHAIN_RPC_URL`  | `BLOCKCHAIN_WS_URL` convertido a HTTP | RPC para recuperar logs y hacer backfill |
+| `BLOCKCHAIN_CONFIRMATIONS` | `0` | Confirmaciones mínimas antes de analizar un bloque |
+| `BLOCKCHAIN_MAX_BLOCK_RANGE` | `2000` | Máximo de bloques por consulta `eth_getLogs` |
 | `BACKEND_STATE_FILE`  | `.runtime/backend-state.json` | Cursor, cola, históricos y veredictos |
 | `BACKEND_LOG_LEVEL`   |                `info` | Reservada para configuración de logging |
 | `ETH_PRIVATE_KEY`     |                 vacío | Clave privada de la wallet operativa    |
@@ -164,6 +172,8 @@ El backend también expone:
   los últimos veredictos almacenados en `BACKEND_STATE_FILE`.
 - `WS /stream`: envía veredictos nuevos y, al conectarse, los últimos veredictos
   disponibles.
+  `GET /metrics` devuelve contadores en formato Prometheus para veredictos,
+  riesgo, eventos procesados, análisis de ventanas y llamadas al LLM.
 
 Ejemplo de reportes:
 

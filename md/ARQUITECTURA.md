@@ -55,6 +55,9 @@ El backend consulta logs por RPC desde el último bloque persistido, recupera
 eventos después de reinicios o desconexiones y elimina duplicados por
 `transactionHash` y `logIndex`. El colector agrupa los eventos en ventanas de un
 minuto y entrega una instantánea al analizador.
+La misma ingesta funciona sobre HashKey Chain: `BLOCKCHAIN_CONFIRMATIONS`
+retrasa el análisis hasta alcanzar finality suficiente y
+`BLOCKCHAIN_MAX_BLOCK_RANGE` evita consultas RPC excesivamente grandes.
 El SDK ofrece un camino independiente: `createAureoClient` puede registrar una
 transferencia, evaluar su política inmediatamente y actualizar
 `aureo.metrics.snapshot()` sin esperar al backend ni a un WebSocket.
@@ -127,6 +130,7 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 ├── md/CLI.md
 ├── md/SCRIPTS.md
 ├── md/TECNOLOGIAS.md
+├── md/HASHKEY.md
 ├── md/prompts/README.md
 ├── Dockerfile
 ├── docker-compose.yml

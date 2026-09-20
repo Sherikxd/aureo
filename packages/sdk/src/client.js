@@ -15,6 +15,10 @@ import { createMetrics } from './metrics.js';
  *   privateKey?: string,
  *   publicAddress?: string,
  *   signer?: ethers.Signer
+ *   speedThreshold?: number,
+ *   speedBlockWindow?: number,
+ *   volumeMultiplier?: number
+ *   emaAlpha?: number
  * }} options
  */
 export function createAureoClient(options) {
@@ -36,7 +40,12 @@ export function createAureoClient(options) {
     ? new ethers.Contract(options.contractAddress, options.abi, signer ?? provider)
     : null;
   let monitor;
-  const metrics = createMetrics();
+  const metrics = createMetrics({
+    speedThreshold: options.speedThreshold,
+    speedBlockWindow: options.speedBlockWindow,
+    volumeMultiplier: options.volumeMultiplier,
+    emaAlpha: options.emaAlpha,
+  });
 
   return {
     provider,

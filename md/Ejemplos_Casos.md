@@ -2,7 +2,9 @@
 
 Este documento muestra tres escenarios operativos para Áureo. Los ejemplos
 suponen que `AureoCore` está desplegado, el backend está conectado al nodo
-WebSocket y existe una wallet con los roles necesarios.
+WebSocket y existe una wallet con los roles necesarios. Para una red pública,
+consulta el flujo de HSKChain en
+[`examples/hashkey-integration/README.md`](../examples/hashkey-integration/README.md).
 
 > Áureo registra y analiza operaciones; no mueve fondos. Un veredicto con
 > `bloquear_contrato: true` es una recomendación auditable. La decisión final
@@ -12,7 +14,7 @@ WebSocket y existe una wallet con los roles necesarios.
 
 Los tres casos están almacenados y documentados en
 [`examples/cases/`](../examples/cases/). Tienen un runner reproducible sobre un
-nodo Hardhat. No usan fondos reales, redes públicas, Grok ni el backend:
+nodo Hardhat. No usan fondos reales, redes públicas, Groq/xAI ni el backend:
 ejecutan transacciones contra el contrato local, validan sus eventos y
 muestran evidencia y métricas del SDK en JSON.
 
@@ -136,7 +138,7 @@ comprometida o un error de integración.
    cuarto bloque es como máximo cuatro bloques, equivalente a cinco bloques
    consecutivos.
 
-4. La regla determinista no espera la respuesta de Grok: eleva el nivel a
+4. La regla determinista no espera la respuesta de Groq/xAI: eleva el nivel a
    `alto`, marca `bloquear_contrato: true` y publica el motivo en el stream.
 
 5. Compliance verifica el contexto fuera de la cadena: wallet, beneficiarios,

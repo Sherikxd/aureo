@@ -11,6 +11,8 @@ Todos se ejecutan desde la raíz del repositorio.
 | `npm run clean`                      | Limpia artefactos y secretos locales después de confirmación.                      |
 | `npm run clean:force`                | Ejecuta la limpieza sin pregunta interactiva.                                      |
 | `npm run deploy:blockchain`          | Compila y despliega `AureoCore` con Ignition.                                      |
+| `npm run deploy:hashkey`             | Despliega `AureoCore` en la red HashKey configurada.                                |
+| `npm run hashkey:check`              | Verifica RPC, chain ID y altura de bloque de HSKChain.                              |
 | `npm run deploy:backend`             | Valida `backend/.env`, instala dependencias, ejecuta lint e inicia el backend.     |
 | `npm run deploy:systemd`             | Instala el servicio `aureo-backend` en Linux con systemd.                          |
 | `npm run demo:run`                   | Despliega el contrato y ejecuta la dapp de prueba del SDK.                         |
@@ -153,14 +155,36 @@ npm run demo:case -- volume
 ```
 
 Los casos están almacenados en [`examples/cases/`](../examples/cases/) y cada
-uno tiene documentación propia. Cada comando despliega un contrato local nuevo
-y devuelve un JSON con las transacciones, bloques, referencias y acciones de
-compliance simuladas. Son transacciones reales en la blockchain local, pero no
-representan pagos ni operaciones en una red pública.
+uno tiene documentación propia. Cada comando reutiliza el contrato local
+desplegado cuando está disponible y devuelve un JSON con las transacciones,
+bloques, métricas del SDK, referencias y acciones de compliance simuladas. Son
+transacciones reales en la blockchain local, pero no representan pagos ni
+operaciones en una red pública.
+
+### HSKChain Testnet
+
+Configura `HASHKEY_NETWORK=testnet`, `HASHKEY_RPC_URL`,
+`HASHKEY_CHAIN_ID=133`, `DEPLOYER_PRIVATE_KEY` y
+`AUREO_LOCAL_DEFAULT_ACCOUNT=false` en `blockchain/.env`. Despliega con:
+
+```bash
+npm run deploy:hashkey
+```
+
+Antes de desplegar puedes validar la red:
+
+```bash
+npm run hashkey:check
+```
+
+Configura `AUREO_CORE_ADDRESS`, `BLOCKCHAIN_RPC_URL` y
+`BLOCKCHAIN_CONFIRMATIONS` en `backend/.env` antes de iniciar el backend.
+Consulta [`HASHKEY.md`](HASHKEY.md) para Mainnet y los parámetros completos.
 
 ### Entorno Docker
 
-Ejecuta la configuración y completa `backend/.env` con `XAI_API_KEY`:
+Ejecuta la configuración y completa `backend/.env` con `GROQ_API_KEY` o
+`XAI_API_KEY` si usarás análisis LLM:
 
 ```bash
 npm run setup:env

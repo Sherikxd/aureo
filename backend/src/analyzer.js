@@ -21,7 +21,10 @@ const DEFAULT_RETRY_DELAY_MS = 500;
  * @param {{provider?: 'groq'|'xai'|'auto'|'none', apiKey?: string, baseURL?: string, model?: string, timeoutMs?: number, maxRetries?: number, retryDelayMs?: number}} [options]
  */
 export function createAnalyzer(options = {}) {
+  const reportMetric = options.onMetric ?? (() => {});
   const provider = resolveProvider(options);
+  const fallbackProviders = options.llmFallbackProviders ??
+    (process.env.LLM_FALLBACK_PROVIDERS ?? '').split(',').map((item) => item.trim()).filter(Boolean);
   const providerConfig = getProviderConfig(provider, options);
   const apiKey = options.apiKey ?? providerConfig.apiKey;
   const client = apiKey
@@ -47,6 +50,11 @@ export function createAnalyzer(options = {}) {
       process.env.LLM_RETRY_DELAY_MS ?? process.env.XAI_RETRY_DELAY_MS,
       DEFAULT_RETRY_DELAY_MS,
     );
+  const policyOptions = {
+    speedThreshold: parsePositiveInteger(process.env.SPEED_THRESHOLD, 3),
+    speedBlockWindow: parseNonNegativeInteger(process.env.SPEED_BLOCK_WINDOW, 4),
+    volumeMultiplier: parsePositiveInteger(process.env.VOLUME_MULTIPLIER, 3),
+  };
 
   return {
     /**
@@ -59,7 +67,7 @@ export function createAnalyzer(options = {}) {
         throw new Error('La ventana de análisis debe contener al menos un evento.');
       }
 
-      const rules = evaluateRules(events, context);
+      const rules = evaluateRules(events, { ...context, ...policyOptions });
       if (rules.speedViolation) {
         return {
           nivel_riesgo: 'alto',
@@ -73,6 +81,7 @@ export function createAnalyzer(options = {}) {
       if (!client) return fallbackVerdict(rules, 'No hay credenciales de un proveedor LLM configurado.');
 
       try {
+        reportMetric('llm_call');
         const completion = await withRetry(
           () =>
             client.chat.completions.create({
@@ -109,6 +118,7 @@ export function createAnalyzer(options = {}) {
           JSON.parse(completion.choices[0]?.message?.content ?? ''),
           rules,
         );
+        reportMetric('llm_success');
         return {
           ...verdict,
           fuente: provider,
@@ -120,6 +130,17 @@ export function createAnalyzer(options = {}) {
           requiere_mfa: verdict.requiere_mfa || rules.volumeViolation,
         };
       } catch (error) {
+        reportMetric('llm_error');
+        const fallbackProvider = fallbackProviders.shift();
+        if (fallbackProvider && fallbackProvider !== provider) {
+          reportMetric('llm_fallback');
+          return createAnalyzer({
+            ...options,
+            provider: fallbackProvider,
+            llmFallbackProviders: fallbackProviders,
+            onMetric: reportMetric,
+          }).analyzeWindow(events, context);
+        }
         return fallbackVerdict(rules, `LLM no disponible: ${error.message}`);
       }
     },
