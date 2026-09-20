@@ -73,7 +73,8 @@ adaptación. Permite a una dapp:
 | `backend/`      | Ingesta WebSocket, ventanas de análisis, reglas de riesgo y consulta a xAI.     |
 | `cli-client/`   | Streaming de veredictos y consultas de reportes desde terminal.                 |
 | `packages/sdk/` | SDK reusable de wallet, monitoring y policy middleware para dapps Ethereum.     |
-| `scripts/`      | Despliegue local, despliegue Docker y servicio systemd.                         |
+| `scripts/`      | Despliegue local, demos de casos, despliegue Docker y servicio systemd.           |
+| `examples/`     | Dapp mínima y casos operativos reproducibles contra Hardhat.                     |
 | `md/`           | Arquitectura, desarrollo local, manual de CLI y prompts para contribuir con IA. |
 | `.copilot/`     | Reglas de contexto y hook de pre-commit.                                        |
 
@@ -117,6 +118,8 @@ npm run clean
 La referencia de estos scripts está en [`md/SCRIPTS.md`](md/SCRIPTS.md).
 Los prompts reutilizables para investigar, implementar y revisar cambios con
 asistencia de IA están en [`md/prompts/README.md`](md/prompts/README.md).
+Los casos ejecutables y su explicación proceso por proceso están en
+[`examples/cases/README.md`](examples/cases/README.md).
 
 Para firmar operaciones Ethereum desde el backend se necesita una wallet
 operativa: `ETH_PRIVATE_KEY` y su dirección pública `ETH_PUBLIC_ADDRESS`. La

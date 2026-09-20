@@ -15,6 +15,9 @@ Todos se ejecutan desde la raíz del repositorio.
 | `npm run deploy:systemd`             | Instala el servicio `aureo-backend` en Linux con systemd.                          |
 | `npm run demo:run`                   | Despliega el contrato y ejecuta la dapp de prueba del SDK.                         |
 | `npm run demo:blockchain`            | Ejecuta el demo de persistencia, alertas y pausa del contrato.                     |
+| `npm run demo:case -- normal`        | Ejecuta el caso local de transferencia corporativa normal.                         |
+| `npm run demo:case -- speed`         | Ejecuta el caso local de operaciones rápidas y alerta de velocidad.                |
+| `npm run demo:case -- volume`        | Ejecuta el caso local de volumen elevado, alerta y pausa explícita.                |
 | `npm run start:local`                | Inicia nodo Hardhat, despliega el contrato y arranca el backend sin Docker.        |
 | `npm run start:local -- --with-cli`  | Inicia el entorno local anterior y la CLI en modo `stream`.                        |
 | `npm run docker:up`                  | Construye y levanta nodo, despliegue y backend.                                    |
@@ -131,6 +134,22 @@ En otra terminal:
 ```bash
 npm run demo:run
 ```
+
+### Demos de casos operativos
+
+Con el nodo Hardhat activo, ejecuta uno de los casos documentados:
+
+```bash
+npm run demo:case -- normal
+npm run demo:case -- speed
+npm run demo:case -- volume
+```
+
+Los casos están almacenados en [`examples/cases/`](../examples/cases/) y cada
+uno tiene documentación propia. Cada comando despliega un contrato local nuevo
+y devuelve un JSON con las transacciones, bloques, referencias y acciones de
+compliance simuladas. Son transacciones reales en la blockchain local, pero no
+representan pagos ni operaciones en una red pública.
 
 ### Entorno Docker
 

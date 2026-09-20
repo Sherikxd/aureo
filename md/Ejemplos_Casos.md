@@ -8,6 +8,37 @@ WebSocket y existe una wallet con los roles necesarios.
 > `bloquear_contrato: true` es una recomendación auditable. La decisión final
 > y cualquier pausa del contrato corresponden al equipo de compliance.
 
+## Ejecutar los casos localmente
+
+Los tres casos están almacenados y documentados en
+[`examples/cases/`](../examples/cases/). Tienen un runner reproducible sobre un nodo Hardhat. No usan
+fondos reales, redes públicas, Grok ni el backend: ejecutan las transacciones
+reales contra el contrato local, validan sus eventos y muestran la evidencia en
+JSON.
+
+En una terminal inicia el nodo:
+
+```bash
+npm --workspace blockchain run node
+```
+
+En otra terminal ejecuta uno de estos casos:
+
+```bash
+npm run demo:case -- normal
+npm run demo:case -- speed
+npm run demo:case -- volume
+```
+
+El runner despliega `AureoCore` con la primera cuenta prefunded de Hardhat,
+asigna los roles necesarios para el demo, ejecuta el caso y limpia el estado de
+pausa al finalizar. Para un despliegue con una wallet propia usa el flujo
+manual de `deploy:blockchain` y proporciona `AUREO_CORE_ADDRESS`; la cuenta
+debe tener fondos y los roles correspondientes.
+
+La explicación proceso por proceso de cada simulación está en
+[`examples/cases/README.md`](../examples/cases/README.md).
+
 ## Caso 1: Transferencia corporativa normal
 
 **Situación:** tesorería registra una transferencia habitual a un proveedor
@@ -59,6 +90,12 @@ inusual del iniciador.
 Se recibe un mensaje `risk_verdict` con `nivel_riesgo` normalmente `bajo`,
 `requiere_mfa: false` y `bloquear_contrato: false`. La operación queda
 consultable en cadena mediante `getCorporateTransfer(operationId)`.
+
+Demo ejecutable equivalente:
+
+```bash
+npm run demo:case -- normal
+```
 
 ## Caso 2: Detección de operaciones rápidas de una misma dirección
 
@@ -116,6 +153,12 @@ comprometida o un error de integración.
 El stream muestra una recomendación de alto riesgo. El contrato solo se pausa
 si compliance confirma la medida y envía la transacción `pause()`. El backend
 no pausa automáticamente el contrato.
+
+Demo ejecutable equivalente:
+
+```bash
+npm run demo:case -- speed
+```
 
 ## Caso 3: Transferencia de volumen elevado y alerta de compliance
 
@@ -178,6 +221,12 @@ El stream publica un veredicto de riesgo mínimo `medio` con MFA requerido.
 `AlertStarted` deja un registro inmutable de la revisión cuando compliance
 confirma la alerta. La recomendación del backend no sustituye la aprobación
 humana ni la política de identidad.
+
+Demo ejecutable equivalente:
+
+```bash
+npm run demo:case -- volume
+```
 
 ## Comprobaciones comunes
 

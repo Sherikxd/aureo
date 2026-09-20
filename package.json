@@ -17,6 +17,7 @@
     "blockchain:compile": "npm --workspace blockchain run compile",
     "blockchain:test": "npm --workspace blockchain run test",
     "demo:blockchain": "node scripts/demo-blockchain.mjs",
+    "demo:case": "bash scripts/run-case-demo.sh",
     "backend:start": "npm --workspace backend run start",
     "cli": "npm --workspace cli-client run start",
     "sdk:lint": "npm --workspace @aureo/sdk run lint",
