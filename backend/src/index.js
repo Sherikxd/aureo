@@ -68,6 +68,7 @@ export async function start() {
     if (request.method === 'GET' && requestUrl.pathname === '/health') {
       sendJson(response, 200, {
         status: 'ok',
+        contractAddress: address,
         wallet: ethWallet
           ? { configured: true, address: ethWallet.address }
           : { configured: false },
@@ -106,11 +107,14 @@ export async function start() {
     response.end();
   });
   const webSocketServer = new WebSocketServer({ server: httpServer, path: '/stream' });
-  webSocketServer.on('connection', (socket) => {
+  webSocketServer.on('connection', (socket, request) => {
     streamClients.add(socket);
     socket.on('error', () => streamClients.delete(socket));
     socket.on('close', () => streamClients.delete(socket));
-    for (const verdict of verdicts) socket.send(JSON.stringify(verdict));
+    const requestUrl = new URL(request.url ?? '/stream', 'http://localhost');
+    if (requestUrl.searchParams.get('history') === 'true') {
+      for (const verdict of verdicts) socket.send(JSON.stringify(verdict));
+    }
   });
   const port = parsePort(process.env.BACKEND_PORT ?? '3000');
   httpServer.listen(port, '0.0.0.0', () => console.log(`API Áureo escuchando en ${port}`));

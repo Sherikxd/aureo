@@ -100,11 +100,13 @@ npm run demo:case -- speed
 ```
 
 Si el backend está configurado con una ventana de análisis de un minuto,
-espera hasta que el veredicto aparezca en el stream.
+espera hasta que termine esa ventana. Para desarrollo rápido, define
+`BACKEND_WINDOW_MS=5000` en `backend/.env` y reinicia el backend.
 
-El demo usa el mismo `AureoCore` que ya está desplegado. No ejecutes
-`deploy:blockchain` entre `start:local` y `demo:case`, porque eso cambiaría la
-dirección del contrato mientras el backend sigue apuntando a la anterior.
+El runner de casos consulta `/health` y reutiliza la dirección de `AureoCore`
+que el backend está observando. No ejecutes `deploy:blockchain` entre
+`start:local` y `demo:case`, porque eso cambiaría la dirección del contrato
+mientras el backend sigue apuntando a la anterior.
 Para obtener resultados más rápidos en desarrollo, puedes usar
 `BACKEND_WINDOW_MS=5000` en `backend/.env`; el valor recomendado por defecto
 para producción sigue siendo `60000`.

@@ -72,6 +72,13 @@ done
 printf 'Desplegando AureoCore...\n'
 AUREO_RUNTIME_ENV="$runtime_file" AUREO_LOCAL_DEFAULT_ACCOUNT=true npm run deploy:blockchain
 
+# Hardhat local starts from a new in-memory chain on every run. Do not reuse
+# cursors and verdicts from a previous local chain.
+if [[ -f backend/.runtime/backend-state.json ]]; then
+  rm -f backend/.runtime/backend-state.json
+  printf 'Estado local anterior del backend eliminado para la nueva cadena Hardhat.\n'
+fi
+
 set -a
 # shellcheck disable=SC1091
 source backend/.env

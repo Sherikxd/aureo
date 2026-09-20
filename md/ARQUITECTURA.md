@@ -6,7 +6,7 @@ real. El flujo principal es:
 
 ```text
 Contrato AureoCore -> SDK o RPC por bloques -> políticas locales
-                                      -> backend (ventana temporal) -> xAI/Grok
+                                      -> backend (ventana temporal) -> OpenRouter/Groq/xAI
        ^                    |                         |
        |                    +---- CLI stream <--------+
        +---------- Circuit Breaker / alerta de compliance
@@ -77,7 +77,7 @@ necesario en el contrato. Sin clave privada, el backend se mantiene en modo solo
 lectura. El endpoint `GET /wallet` expone únicamente la dirección pública y el
 estado del signer, nunca la clave.
 
-Antes de invocar a Grok se ejecutan reglas deterministas. Si una misma dirección
+Antes de invocar al proveedor LLM configurado se ejecutan reglas deterministas. Si una misma dirección
 aparece en más de tres transferencias cuyo rango ocupa como máximo cinco bloques
 consecutivos, el veredicto es inmediatamente `alto` y
 `bloquear_contrato: true`, incluso si el modelo no está disponible. Para volumen,

@@ -29,6 +29,11 @@ Estos casos son simulaciones locales: no mueven fondos reales, no llaman a
 Groq/xAI, no usan el backend y no conectan con una red pública. Las transacciones sí
 son reales dentro de la blockchain local y ejercitan las validaciones,
 eventos, roles y estado de `AureoCore`.
+
+Cuando el backend local está activo, `run-case-demo.sh` detecta la dirección
+que devuelve `/health` y envía los eventos al contrato que el backend observa.
+En ese modo, los veredictos aparecen en `/stream` después de la ventana de
+análisis configurada (`BACKEND_WINDOW_MS`, un minuto por defecto).
 Las métricas del SDK incluyen operaciones, monto total, riesgo, MFA y
 recomendaciones de bloqueo; no dependen del backend ni del WebSocket.
 

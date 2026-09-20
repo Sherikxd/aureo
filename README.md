@@ -7,7 +7,7 @@ de aplicaciones, evaluación de riesgo y tooling de wallets reutilizable.
 monitorización de eventos, signer/wallet tooling, evaluación de políticas,
 alertas operativas y una API/CLI de desarrollo. La aplicación de referencia
 escucha eventos corporativos, aplica reglas deterministas y puede consultar a
-Grok para enriquecer el análisis.
+OpenRouter, Groq o xAI para enriquecer el análisis.
 
 ## Por qué existe Áureo
 
@@ -54,7 +54,7 @@ adaptación. Permite a una dapp:
 ┌─────────────────────┐
 │ Backend Node.js     │
 │ ethers + reglas     │
-│ Groq / xAI (opcional)│
+│ OpenRouter / Groq / xAI│
 └───────┬───────┬─────┘
         │       │
         │       └── WebSocket /stream
@@ -69,16 +69,16 @@ adaptación. Permite a una dapp:
 
 ### Componentes
 
-| Componente      | Responsabilidad                                                                 |
-| --------------- | ------------------------------------------------------------------------------- |
-| `blockchain/`   | Contrato `AureoCore`, roles de acceso, eventos empresariales y Circuit Breaker. |
-| `backend/`      | Ingesta RPC, ventanas de análisis, reglas de riesgo y consulta a Groq/xAI.      |
-| `packages/sdk/` | SDK reusable de wallet, monitoring, policies y métricas locales.                |
-| `scripts/`      | Despliegue local, demos de casos, despliegue Docker y servicio systemd.           |
-| `examples/`     | Dapp mínima y casos operativos reproducibles contra Hardhat.                     |
-| `cli-client/`   | CLI para estado del backend, streams de riesgo y reportes de auditoría.          |
-| `md/`           | Arquitectura, desarrollo local, manual de CLI y prompts para contribuir con IA. |
-| `.copilot/`     | Reglas de contexto y hook de pre-commit.                                        |
+| Componente      | Responsabilidad                                                                       |
+| --------------- | ------------------------------------------------------------------------------------- |
+| `blockchain/`   | Contrato `AureoCore`, roles de acceso, eventos empresariales y Circuit Breaker.       |
+| `backend/`      | Ingesta RPC, ventanas de análisis, reglas de riesgo y consulta a OpenRouter/Groq/xAI. |
+| `packages/sdk/` | SDK reusable de wallet, monitoring, policies y métricas locales.                      |
+| `scripts/`      | Despliegue local, demos de casos, despliegue Docker y servicio systemd.               |
+| `examples/`     | Dapp mínima y casos operativos reproducibles contra Hardhat.                          |
+| `cli-client/`   | CLI para estado del backend, streams de riesgo y reportes de auditoría.               |
+| `md/`           | Arquitectura, desarrollo local, manual de CLI y prompts para contribuir con IA.       |
+| `.copilot/`     | Reglas de contexto y hook de pre-commit.                                              |
 
 ## Requisitos
 
@@ -354,7 +354,7 @@ la wallet queda conectada y lista para integrar operaciones autorizadas.
 
 ## Reglas de riesgo
 
-Las reglas deterministas se ejecutan antes de llamar a Grok:
+Las reglas deterministas se ejecutan antes de llamar al proveedor LLM configurado:
 
 - **Velocidad de bloque:** más de tres operaciones de la misma dirección dentro
   de un rango máximo de cinco bloques consecutivos produce riesgo `alto` y
@@ -366,6 +366,129 @@ Las reglas deterministas se ejecutan antes de llamar a Grok:
 La decisión de bloqueo se publica como veredicto auditable. La activación real
 del Circuit Breaker debe quedar sometida a una política de autorización de
 compliance; la CLI no valida MFA por sí sola.
+
+## Alcance: solo observa lo que tú configuras
+
+> Disclaimer: Áureo no vigila toda la blockchain; vigila los contratos y
+> eventos que tú le indicas, analiza lo que ocurre en ellos y comunica
+> posibles riesgos.
+
+Piensa en la blockchain como una ciudad enorme y en Áureo como una cámara
+instalada frente a un edificio específico:
+
+```text
+Blockchain completa
+├── Uniswap
+├── NFTs
+├── Otros contratos
+├── Miles de wallets
+└── AureoCore de tu aplicación  ← Áureo observa este
+```
+
+### Cómo funciona
+
+1. Despliegas `AureoCore`, el contrato de Áureo.
+2. Configuras su dirección en el backend:
+
+```dotenv
+AUREO_CORE_ADDRESS=0x...
+BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
+```
+
+3. El backend pregunta periódicamente al nodo blockchain: "¿Hay eventos
+   nuevos emitidos por este contrato?".
+4. Áureo revisa principalmente eventos como `CorporateTransferRecorded`.
+5. Agrupa las operaciones durante una ventana, por ejemplo 60 segundos.
+6. Aplica reglas:
+   - demasiadas operaciones en pocos bloques;
+   - montos demasiado altos;
+   - volumen inusual;
+   - necesidad de MFA.
+7. Publica un resultado por:
+   - API HTTP;
+   - WebSocket `/stream`;
+   - CLI;
+   - métricas Prometheus;
+   - reportes persistidos.
+
+### Ejemplo sencillo
+
+Una aplicación registra una transferencia:
+
+```text
+Wallet A → AureoCore → Wallet B
+```
+
+Áureo detecta el evento y puede producir:
+
+```json
+{
+  "nivel_riesgo": "alto",
+  "motivo": "Más de 3 operaciones en pocos bloques",
+  "requiere_mfa": false,
+  "bloquear_contrato": true
+}
+```
+
+Eso significa: "Esta operación parece peligrosa según las reglas".
+
+No significa que Áureo pause automáticamente el contrato. La decisión final
+corresponde a compliance y a una cuenta que tenga el rol correspondiente.
+
+### Lo que Áureo sí puede observar
+
+- El contrato `AureoCore` configurado.
+- Los eventos emitidos por ese contrato.
+- Las transferencias registradas mediante `recordCorporateTransfer`.
+- Los bloques y montos asociados a esos eventos.
+- El historial que el backend haya guardado.
+- Contratos compatibles si configuras su dirección y ABI correctamente.
+
+### Lo que Áureo no observa automáticamente
+
+- Toda la blockchain.
+- Todas las wallets.
+- Uniswap, OpenSea u otros protocolos no configurados.
+- Transacciones que no emitan los eventos que Áureo busca.
+- Conversaciones o datos privados fuera de la cadena.
+- Contratos desplegados en otra red si no configuras esa red.
+- Una dirección antigua si el backend está apuntando a otro contrato.
+
+### En tus demos locales
+
+Cuando ejecutas:
+
+```bash
+npm run start:local -- --with-cli
+```
+
+ocurre esto:
+
+1. Se inicia una blockchain Hardhat local.
+2. Se despliega `AureoCore`.
+3. El backend se conecta a esa dirección.
+4. La CLI escucha `ws://127.0.0.1:3000/stream`.
+5. Ejecutas un demo.
+6. El demo registra operaciones en el mismo `AureoCore`.
+7. El backend lee los eventos.
+8. El backend genera un veredicto.
+9. La CLI muestra el veredicto.
+
+Si ejecutas el demo contra otro contrato, el backend no verá nada. Es como
+registrar una operación en otro edificio mientras la cámara está mirando el
+primero.
+
+Además, el backend espera la ventana configurada:
+
+```dotenv
+BACKEND_WINDOW_MS=60000
+```
+
+Eso puede tardar hasta un minuto. Para probar rápidamente:
+
+```dotenv
+BACKEND_WINDOW_MS=5000
+```
 
 ## Usar el SDK en otra dapp
 

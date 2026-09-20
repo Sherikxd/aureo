@@ -74,6 +74,13 @@ El comando abre un WebSocket y muestra cada veredicto recibido. Finaliza con
 aureo stream --url ws://backend.example.com/stream
 ```
 
+El stream muestra solo veredictos nuevos por defecto. Para incluir el histórico
+persistido, usa:
+
+```bash
+aureo stream --history
+```
+
 Para una salida legible en terminal, en lugar de JSON:
 
 ```bash

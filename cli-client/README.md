@@ -78,6 +78,15 @@ aureo stream
 aureo stream --url ws://backend.example.com/stream
 ```
 
+El stream muestra únicamente veredictos nuevos por defecto. Esto evita que
+registros antiguos o respuestas de un proveedor LLM que ya no está configurado
+aparezcan como si fueran análisis actuales. Para solicitar explícitamente el
+histórico persistido:
+
+```bash
+aureo stream --history
+```
+
 Formatos disponibles:
 
 ```bash

@@ -59,6 +59,15 @@ requieren backend. `metrics:realtime` es un panel adicional para observar los
 veredictos publicados por el backend; sus contadores son independientes de los
 snapshots locales que imprime cada caso.
 
+Si el backend está activo, `demo:case` consulta `/health` y reutiliza la
+dirección `contractAddress` que el backend está observando. Los veredictos
+aparecen después de `BACKEND_WINDOW_MS` (60 segundos por defecto). Para una
+prueba rápida:
+
+```dotenv
+BACKEND_WINDOW_MS=5000
+```
+
 Para usar una wallet personalizada en el despliegue y en el demo:
 
 ```dotenv

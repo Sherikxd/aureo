@@ -18,7 +18,7 @@ de cada una dentro del flujo de observabilidad y compliance Web3.
 | Backend realtime      | `ws`                    | Publicar veredictos por WebSocket                     |
 | Métricas SDK          | JavaScript + `bigint`  | Contadores locales de operaciones y políticas         |
 | Análisis IA           | SDK OpenAI              | Consumir APIs compatibles de Groq o xAI                |
-| Modelo                | Groq / xAI              | Clasificar riesgo después de las reglas deterministas |
+| Modelo                | OpenRouter / Groq / xAI | Clasificar riesgo después de las reglas deterministas |
 | Cliente               | Commander + `ws`        | CLI para stream y consultas de reportes               |
 | Contenedores          | Docker Compose          | Orquestar nodo, despliegue, backend y CLI             |
 | Servicio Linux        | systemd                 | Mantener el backend en ejecución en servidores        |

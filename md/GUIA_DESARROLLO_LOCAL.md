@@ -105,6 +105,9 @@ El flujo usa automáticamente la primera cuenta prefunded de Hardhat y genera
 una dirección nueva del contrato para esa ejecución. No ejecutes
 `npm run deploy:blockchain` en otra terminal mientras este proceso esté activo:
 el backend debe seguir observando la dirección que acaba de desplegar.
+Cada ejecución crea una cadena Hardhat en memoria; por eso `start:local`
+reinicia `backend/.runtime/backend-state.json` antes de iniciar el backend y
+evita reutilizar cursores o veredictos de una cadena anterior.
 
 Comprueba los servicios desde otra terminal:
 
@@ -119,6 +122,11 @@ La CLI queda conectada al stream:
 ```text
 ws://127.0.0.1:3000/stream
 ```
+
+El stream no reenvía históricos por defecto. Usa `npm run cli -- stream
+--history` solo si necesitas inspeccionar veredictos persistidos. Así, un
+veredicto antiguo de Groq, xAI u otro proveedor no aparece como una respuesta
+nueva de OpenRouter.
 
 Para cerrar todo el entorno sin borrar despliegues ni estado:
 
@@ -141,6 +149,10 @@ Después ejecuta un caso que genere actividad:
 ```bash
 npm run demo:case -- speed
 ```
+
+El runner consulta `/health` y reutiliza la dirección de `AureoCore` que el
+backend está observando. Esto es importante: no ejecutes el caso contra un
+despliegue distinto, porque sus eventos no aparecerán en el stream.
 
 El panel recibe los veredictos desde `/stream` y actualiza los contadores de
 riesgo, MFA y recomendaciones de bloqueo. Para salida automatizable:

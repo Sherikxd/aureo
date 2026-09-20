@@ -26,7 +26,19 @@ cleanup() { rm -f "$runtime_file"; }
 trap cleanup EXIT
 
 deployment_file="blockchain/ignition/deployments/chain-31337/deployed_addresses.json"
-if [[ -f "$deployment_file" ]]; then
+address=''
+backend_url="${AUREO_BACKEND_URL:-http://127.0.0.1:3000}"
+if health_payload="$(curl --silent --fail --max-time 2 "$backend_url/health" 2>/dev/null)"; then
+  address="$(
+    HEALTH_PAYLOAD="$health_payload" node --input-type=module -e \
+      "const payload = JSON.parse(process.env.HEALTH_PAYLOAD); process.stdout.write(payload.contractAddress ?? '')"
+  )"
+  if [[ -n "$address" ]]; then
+    printf 'Usando AureoCore observado por el backend en %s.\n' "$address"
+    printf 'AUREO_CORE_ADDRESS=%s\n' "$address" > "$runtime_file"
+  fi
+fi
+if [[ -z "$address" && -f "$deployment_file" ]]; then
   address="$(
     node --input-type=module -e "
       import { readFileSync } from 'node:fs';
@@ -40,7 +52,7 @@ if [[ -f "$deployment_file" ]]; then
   fi
   printf 'Usando AureoCore existente en %s.\n' "$address"
   printf 'AUREO_CORE_ADDRESS=%s\n' "$address" > "$runtime_file"
-else
+elif [[ -z "$address" ]]; then
   AUREO_RUNTIME_ENV="$runtime_file" AUREO_LOCAL_DEFAULT_ACCOUNT=true bash scripts/deploy-blockchain.sh localhost
 fi
 set -a

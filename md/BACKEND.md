@@ -9,7 +9,7 @@ de `AureoCore` con el analizador de riesgo y los clientes HTTP/WebSocket.
 - npm 10 o superior.
 - Un nodo RPC HTTP compatible con `eth_getLogs`.
 - Un contrato `AureoCore` desplegado.
-- Una clave de xAI para enriquecer análisis con Grok (opcional; existe modo
+- Una clave de OpenRouter, Groq o xAI para enriquecer análisis (opcional; existe modo
   degradado determinista).
 
 El backend no mueve fondos ni ejecuta automáticamente las recomendaciones de
@@ -178,8 +178,8 @@ El backend también expone:
 
 - `POST /reports`: recibe `{ "query": "..." }` y devuelve la consulta junto con
   los últimos veredictos almacenados en `BACKEND_STATE_FILE`.
-- `WS /stream`: envía veredictos nuevos y, al conectarse, los últimos veredictos
-  disponibles.
+- `WS /stream`: envía únicamente veredictos nuevos por defecto. Para solicitar
+  explícitamente los veredictos persistidos, conecta a `/stream?history=true`.
   `GET /metrics` devuelve contadores en formato Prometheus para veredictos,
   riesgo, eventos procesados, análisis de ventanas y llamadas al LLM.
 
@@ -206,10 +206,21 @@ npm run cli -- stream
 También puedes probar el handshake con una herramienta compatible con
 WebSocket, usando `ws://127.0.0.1:3000/stream`.
 
+La CLI no muestra históricos por defecto:
+
+```bash
+npm run cli -- stream
+```
+
+Usa `npm run cli -- stream --history` solo para auditoría. Así, un veredicto
+antiguo de un proveedor LLM que ya no está configurado no se presenta como una
+respuesta actual.
+
 ## 7. Flujo de procesamiento
 
 1. El RPC consulta `CorporateTransferRecorded` desde el último bloque guardado.
-2. Los eventos recuperados se deduplican y se acumulan durante una ventana de un minuto.
+2. Los eventos recuperados se deduplican y se acumulan durante la ventana
+   `BACKEND_WINDOW_MS` (60 segundos por defecto).
 3. Las reglas deterministas revisan velocidad y volumen.
 4. Si no existe una regla inmediata y hay un proveedor LLM configurado, el analizador envía
    únicamente iniciador, monto y bloque al LLM.

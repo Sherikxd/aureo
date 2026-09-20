@@ -95,10 +95,13 @@ program
   .description('Muestra en tiempo real los veredictos de riesgo')
   .option('-u, --url <url>', 'WebSocket del backend', process.env.AUREO_STREAM_URL)
   .option('-f, --format <format>', 'Formato de salida: json o pretty', 'json')
+  .option('--history', 'Incluye veredictos persistidos al conectar')
   .option('--no-mfa-prompt', 'No solicitar MFA de forma interactiva')
   .option('--metrics', 'Muestra un resumen de veredictos recibidos')
   .action((options) => {
-    const url = requireUrl(options.url, 'AUREO_STREAM_URL');
+    const parsedUrl = new URL(requireUrl(options.url, 'AUREO_STREAM_URL'));
+    if (options.history) parsedUrl.searchParams.set('history', 'true');
+    const url = parsedUrl.toString();
     if (!['json', 'pretty'].includes(options.format)) {
       throw new Error('--format debe ser json o pretty.');
     }
