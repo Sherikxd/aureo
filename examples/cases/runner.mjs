@@ -1,4 +1,5 @@
 import { ethers } from 'ethers';
+import { createAureoClient } from '@aureo/sdk';
 
 const rpcUrl = process.env.HARDHAT_RPC_URL ?? 'http://127.0.0.1:8545';
 const contractAddress = process.env.AUREO_CORE_ADDRESS;
@@ -27,7 +28,13 @@ const provider = new ethers.JsonRpcProvider(rpcUrl);
 const [admin, beneficiary] = await Promise.all([provider.getSigner(0), provider.getSigner(1)]);
 const adminAddress = await admin.getAddress();
 const beneficiaryAddress = await beneficiary.getAddress();
-const contract = new ethers.Contract(contractAddress, abi, admin);
+const aureo = createAureoClient({
+  rpcUrl,
+  contractAddress,
+  abi,
+  signer: admin,
+});
+const contract = aureo.contract;
 
 await ensureRoles(contract, adminAddress);
 if (await contract.paused()) await waitFor(contract.unpause());
@@ -38,7 +45,14 @@ if (!runners[selectedCase]) {
 }
 
 const result = await runners[selectedCase]();
-console.log(JSON.stringify({ case: selectedCase, network: rpcUrl, contract: contractAddress, ...result }, null, 2));
+console.log(JSON.stringify({
+  case: selectedCase,
+  network: rpcUrl,
+  contract: contractAddress,
+  metrics: aureo.metrics.snapshot(),
+  ...result,
+}, null, 2));
+await aureo.close();
 await provider.destroy();
 
 async function runNormal() {
@@ -97,16 +111,11 @@ async function runVolume() {
 
 async function record(label, amount) {
   const reference = ethers.encodeBytes32String(label);
-  const receipt = await waitFor(
-    contract.recordCorporateTransfer(beneficiaryAddress, amount, reference),
-  );
-  const event = findEvent(receipt, 'CorporateTransferRecorded');
+  const result = await aureo.recordCorporateTransfer(beneficiaryAddress, amount, reference);
   return {
-    operationId: (event?.args.operationId ?? 0n).toString(),
-    amount: amount.toString(),
+    ...result.transfer,
     reference,
-    beneficiary: beneficiaryAddress,
-    blockNumber: receipt.blockNumber,
+    policy: result.policy,
   };
 }
 

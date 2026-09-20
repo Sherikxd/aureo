@@ -12,7 +12,7 @@ const ABI = [
   'event AlertStarted(uint256 indexed alertId,bytes32 indexed operationReference,uint8 riskLevel,string reason,uint256 timestamp)',
 ];
 
-const windowMs = 60_000;
+const windowMs = parseInterval(process.env.BACKEND_WINDOW_MS ?? '60000');
 const maxBodyBytes = 1_048_576;
 const maxBufferedEvents = 10_000;
 const maxVerdicts = 100;
@@ -245,6 +245,14 @@ function parsePort(value) {
     throw new Error('BACKEND_PORT debe ser un puerto entero entre 1 y 65535.');
   }
   return port;
+}
+
+function parseInterval(value) {
+  const interval = Number(value);
+  if (!Number.isInteger(interval) || interval < 1_000) {
+    throw new Error('BACKEND_WINDOW_MS debe ser un entero de al menos 1000 ms.');
+  }
+  return interval;
 }
 
 start().catch((error) => {

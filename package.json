@@ -27,6 +27,7 @@
     "clean": "bash scripts/clean-project.sh",
     "clean:force": "bash scripts/clean-project.sh --yes",
     "demo:run": "bash scripts/run-demo.sh",
+    "metrics:realtime": "npm --workspace @aureo/realtime-metrics run start",
     "start:local": "bash scripts/start-local.sh",
     "deploy:blockchain": "bash scripts/deploy-blockchain.sh",
     "deploy:backend": "bash scripts/deploy-backend.sh",

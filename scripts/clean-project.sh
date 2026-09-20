@@ -7,7 +7,7 @@ if [[ "${1:-}" != "--yes" ]]; then
 Este comando eliminará artefactos locales de desarrollo:
   - node_modules/
   - archivos .env locales (con secretos)
-  - caches, artifacts, coverage, dist y .runtime
+  - caches, artifacts, coverage, dist, logs y estados .runtime
   - despliegues locales de Hardhat Ignition
 
 No elimina código fuente, package-lock.json ni archivos .env.example.
@@ -26,11 +26,23 @@ remove_path() {
 
 remove_path node_modules
 remove_path .runtime
+remove_path backend/.runtime
+remove_path examples/realtime-metrics/.runtime
 remove_path coverage
 remove_path dist
+remove_path .eslintcache
 remove_path blockchain/artifacts
 remove_path blockchain/cache
 remove_path blockchain/ignition/deployments
+
+while IFS= read -r -d '' generated_file; do
+  rm -f -- "$generated_file"
+  printf 'Eliminado: %s\n' "${generated_file#"$ROOT_DIR"/}"
+done < <(find "$ROOT_DIR" \
+  -path "$ROOT_DIR/.git" -prune -o \
+  -path "$ROOT_DIR/node_modules" -prune -o \
+  -type f \( -name 'npm-debug.log*' -o -name 'yarn-debug.log*' -o -name 'yarn-error.log*' \) \
+  -print0)
 
 while IFS= read -r -d '' env_file; do
   case "$env_file" in

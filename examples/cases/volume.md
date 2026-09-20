@@ -8,7 +8,8 @@ operativa y requiere revisión reforzada.
 
 ## Proceso paso a paso
 
-1. El runner despliega `AureoCore` y prepara los roles de operador y compliance.
+1. El runner reutiliza `AureoCore` si ya existe y prepara los roles de operador
+   y compliance.
 2. Registra las dos operaciones históricas para representar el comportamiento
    habitual del iniciador.
 3. Registra `ACQ-DEMO-URGENT` por `350_000` mediante
@@ -22,6 +23,7 @@ operativa y requiere revisión reforzada.
 ## Resultado esperado
 
 El JSON contiene `expectedRisk: "medio"`, `volumeViolation: true`, un `alertId`
-y una comprobación de pausa aprobada. La demo no autentica MFA ni decide si se
+y `metrics.mfaRequired: 1`, además de una comprobación de pausa aprobada. La
+demo no autentica MFA ni decide si se
 libera la transferencia; esas decisiones pertenecen al proveedor de identidad
 y al equipo de compliance.

@@ -5,7 +5,8 @@ observabilidad, seguridad, wallet tooling y evaluación de políticas en tiempo
 real. El flujo principal es:
 
 ```text
-Contrato AureoCore -> RPC por bloques -> backend (ventana temporal) -> xAI/Grok
+Contrato AureoCore -> SDK o RPC por bloques -> políticas locales
+                                      -> backend (ventana temporal) -> xAI/Grok
        ^                    |                         |
        |                    +---- CLI stream <--------+
        +---------- Circuit Breaker / alerta de compliance
@@ -54,10 +55,16 @@ El backend consulta logs por RPC desde el último bloque persistido, recupera
 eventos después de reinicios o desconexiones y elimina duplicados por
 `transactionHash` y `logIndex`. El colector agrupa los eventos en ventanas de un
 minuto y entrega una instantánea al analizador.
+El SDK ofrece un camino independiente: `createAureoClient` puede registrar una
+transferencia, evaluar su política inmediatamente y actualizar
+`aureo.metrics.snapshot()` sin esperar al backend ni a un WebSocket.
 El SDK oficial de OpenAI se configura con `baseURL=https://api.x.ai/v1` para usar
-`grok-4.6`. `response_format: { type: "json_object" }` reduce respuestas libres,
-pero `validateVerdict` vuelve a validar tipos, enum y campos obligatorios antes de
-publicar un veredicto. Las credenciales se obtienen exclusivamente de `.env`.
+`grok-4.6`. Cada solicitud tiene timeout y reintentos limitados. Solo se envían
+al LLM los campos necesarios para clasificar el riesgo; no se envían
+beneficiarios, referencias internas ni identificadores de deduplicación.
+`response_format: { type: "json_object" }` reduce respuestas libres, pero
+`validateVerdict` vuelve a validar tipos, enum y coherencia antes de publicar un
+veredicto. Las credenciales se obtienen exclusivamente de `.env`.
 
 El backend puede crear una wallet Ethereum con `ethers.Wallet` a partir de
 `ETH_PRIVATE_KEY`, conectarla al provider y verificarla contra
@@ -78,8 +85,10 @@ real debe delegarse a un proveedor de identidad; nunca se considera autenticada
 solo por recibir texto.
 
 Los niveles de alerta válidos son 1–4 y las entradas con dirección, monto o
-motivo inválidos se rechazan con errores custom. El estado local se guarda en `BACKEND_STATE_FILE`; para producción con varias
-instancias debe migrarse a una base transaccional compartida. La lógica de riesgo no debe pausar automáticamente
+motivo inválidos se rechazan con errores custom. Si el LLM no está configurado o
+falla, el backend usa un veredicto determinista degradado y conserva las reglas
+locales. El estado local se guarda en `BACKEND_STATE_FILE`; para producción con
+varias instancias debe migrarse a una base transaccional compartida. La lógica de riesgo no debe pausar automáticamente
 sin una política aprobada: `bloquear_contrato` es una recomendación auditable.
 
 ### CLI
@@ -111,7 +120,7 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 │   └── src/index.js
 ├── packages/sdk/
 │   ├── README.md
-│   └── src/{client.js,index.js,wallet.js,monitor.js,policy.js}
+│   └── src/{client.js,index.js,wallet.js,monitor.js,policy.js,metrics.js}
 ├── md/ARQUITECTURA.md
 ├── md/BACKEND.md
 ├── md/Ejemplos_Casos.md
@@ -137,8 +146,8 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 ## Operación local
 
 1. Instalar dependencias con `npm install`.
-2. Copiar cada `.env.example` a `.env` y completar la dirección del contrato y
-   `XAI_API_KEY`.
+2. Copiar cada `.env.example` a `.env` y completar la dirección del contrato.
+   `XAI_API_KEY` solo es necesaria para enriquecer el análisis con xAI.
 3. Ejecutar `npm --workspace blockchain run node`.
 4. Desplegar con `npm --workspace blockchain run deploy:local`.
 5. Iniciar el backend y, en otra terminal, `npm run cli -- status` o

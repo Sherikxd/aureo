@@ -18,6 +18,7 @@ Todos se ejecutan desde la raíz del repositorio.
 | `npm run demo:case -- normal`        | Ejecuta el caso local de transferencia corporativa normal.                         |
 | `npm run demo:case -- speed`         | Ejecuta el caso local de operaciones rápidas y alerta de velocidad.                |
 | `npm run demo:case -- volume`        | Ejecuta el caso local de volumen elevado, alerta y pausa explícita.                |
+| `npm run metrics:realtime`          | Muestra métricas del backend y stream en tiempo real (opcional).                   |
 | `npm run start:local`                | Inicia nodo Hardhat, despliega el contrato y arranca el backend sin Docker.        |
 | `npm run start:local -- --with-cli`  | Inicia el entorno local anterior y la CLI en modo `stream`.                        |
 | `npm run docker:up`                  | Construye y levanta nodo, despliegue y backend.                                    |
@@ -31,6 +32,11 @@ Los comandos `deploy:blockchain`, `demo:run` y `start:local` usan por defecto
 la primera cuenta prefunded que crea `hardhat node`. Esto permite ejecutar el
 flujo local aunque `blockchain/.env` o `examples/demo-dapp/.env` contengan
 claves de una wallet externa.
+
+Los casos `demo:case` calculan sus métricas directamente con `@aureo/sdk` y no
+requieren backend. `metrics:realtime` es un panel adicional para observar los
+veredictos publicados por el backend; sus contadores son independientes de los
+snapshots locales que imprime cada caso.
 
 Para usar una wallet personalizada en el despliegue y en el demo:
 
@@ -100,7 +106,8 @@ npm run clean
 ```
 
 El comando elimina `node_modules`, `.env` locales, caches, artifacts, coverage,
-dist, `.runtime` y despliegues locales de Ignition. Conserva el código,
+dist, logs de gestores de paquetes, estados `.runtime` (incluido
+`backend/.runtime`) y despliegues locales de Ignition. Conserva el código,
 `package-lock.json` y todos los `.env.example`. Para automatización:
 
 ```bash

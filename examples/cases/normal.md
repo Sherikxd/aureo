@@ -8,15 +8,16 @@ operativa de `100_000`.
 
 ## Proceso paso a paso
 
-1. El runner despliega `AureoCore` y obtiene las cuentas locales de Hardhat.
+1. El runner reutiliza `AureoCore` si ya está desplegado y obtiene las cuentas
+   locales de Hardhat.
 2. La cuenta administradora conserva `OPERATOR_ROLE` y
    `COMPLIANCE_ROLE`.
 3. El operador llama a `recordCorporateTransfer` con el beneficiario de la
    cuenta 1, el monto y la referencia `PAYROLL-DEMO`.
 4. El contrato asigna `operationId`, persiste la transferencia y emite
    `CorporateTransferRecorded`.
-5. El runner espera la confirmación, extrae el bloque y muestra la referencia
-   persistida.
+5. El SDK espera la confirmación, extrae el bloque, evalúa la política local y
+   el runner muestra la referencia persistida junto con `metrics`.
 6. No crea una alerta ni pausa el contrato porque el escenario no contiene una
    señal de riesgo.
 

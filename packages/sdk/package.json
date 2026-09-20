@@ -9,7 +9,8 @@
     "./client": "./src/client.js",
     "./wallet": "./src/wallet.js",
     "./monitor": "./src/monitor.js",
-    "./policy": "./src/policy.js"
+    "./policy": "./src/policy.js",
+    "./metrics": "./src/metrics.js"
   },
   "files": [
     "src",

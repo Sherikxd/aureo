@@ -35,6 +35,8 @@ adaptación. Permite a una dapp:
 - Validar que la dirección pública corresponde a la clave privada.
 - Suscribirse a eventos EVM por WebSocket con cleanup explícito.
 - Ejecutar políticas de velocidad y volumen de forma determinista.
+- Registrar transferencias mediante `createAureoClient` y obtener métricas
+  locales de operaciones, montos, riesgo, MFA y bloqueos.
 - Construir encima integraciones de smart accounts, session keys, gas
   abstraction, hardware wallets o proveedores MPC sin acoplarse al backend.
 
@@ -52,7 +54,7 @@ adaptación. Permite a una dapp:
 ┌─────────────────────┐
 │ Backend Node.js     │
 │ ethers + reglas     │
-│ xAI / grok-4.6      │
+│ Groq / xAI (opcional)│
 └───────┬───────┬─────┘
         │       │
         │       └── WebSocket /stream
@@ -70,8 +72,8 @@ adaptación. Permite a una dapp:
 | Componente      | Responsabilidad                                                                 |
 | --------------- | ------------------------------------------------------------------------------- |
 | `blockchain/`   | Contrato `AureoCore`, roles de acceso, eventos empresariales y Circuit Breaker. |
-| `backend/`      | Ingesta WebSocket, ventanas de análisis, reglas de riesgo y consulta a xAI.     |
-| `packages/sdk/` | SDK reusable de wallet, monitoring y policy middleware para dapps Ethereum.     |
+| `backend/`      | Ingesta RPC, ventanas de análisis, reglas de riesgo y consulta a xAI.           |
+| `packages/sdk/` | SDK reusable de wallet, monitoring, policies y métricas locales.                |
 | `scripts/`      | Despliegue local, demos de casos, despliegue Docker y servicio systemd.           |
 | `examples/`     | Dapp mínima y casos operativos reproducibles contra Hardhat.                     |
 | `cli-client/`   | CLI para estado del backend, streams de riesgo y reportes de auditoría.          |
@@ -100,7 +102,9 @@ wallet:
 npm run setup:env -- --skip-wallet
 ```
 
-Para análisis con Grok se necesita una clave `XAI_API_KEY`.
+Para análisis con un LLM puedes configurar `GROQ_API_KEY` o `XAI_API_KEY`.
+Groq se selecciona automáticamente cuando ambas están presentes; usa
+`LLM_PROVIDER=xai` para forzar xAI.
 
 Para volver a configurar una wallet Ethereum de desarrollo sin regenerar
 plantillas:
@@ -120,6 +124,8 @@ Los prompts reutilizables para investigar, implementar y revisar cambios con
 asistencia de IA están en [`md/prompts/README.md`](md/prompts/README.md).
 Los casos ejecutables y su explicación proceso por proceso están en
 [`examples/cases/README.md`](examples/cases/README.md).
+La integración de métricas en tiempo real está en
+[`examples/realtime-metrics/README.md`](examples/realtime-metrics/README.md).
 
 Para firmar operaciones Ethereum desde el backend se necesita una wallet
 operativa: `ETH_PRIVATE_KEY` y su dirección pública `ETH_PUBLIC_ADDRESS`. La
@@ -221,6 +227,16 @@ AUREO_CORE_ADDRESS=0x...
 XAI_API_KEY=tu-clave-de-xai
 XAI_BASE_URL=https://api.x.ai/v1
 XAI_MODEL=grok-4.6
+LLM_PROVIDER=auto
+GROQ_API_KEY=tu-clave-de-groq
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_MODEL=llama-3.3-70b-versatile
+LLM_TIMEOUT_MS=15000
+LLM_MAX_RETRIES=2
+LLM_RETRY_DELAY_MS=500
+XAI_TIMEOUT_MS=15000
+XAI_MAX_RETRIES=2
+XAI_RETRY_DELAY_MS=500
 ETH_PRIVATE_KEY=0x...
 ETH_PUBLIC_ADDRESS=0x...
 BACKEND_PORT=3000
@@ -232,6 +248,14 @@ veredictos en `.runtime/backend-state.json` por defecto. Configura
 `BACKEND_STATE_FILE` para usar otra ubicación persistente. La ingesta usa
 `BLOCKCHAIN_RPC_URL` para recuperar logs desde el último bloque procesado tras
 una desconexión o reinicio.
+
+`LLM_PROVIDER=auto` prioriza Groq y usa xAI si no existe `GROQ_API_KEY`.
+También puedes usar `LLM_PROVIDER=groq`, `LLM_PROVIDER=xai` o `none`.
+Las claves son opcionales para el arranque: sin un proveedor disponible, Áureo
+usa las reglas deterministas y publica `fuente: "determinista_degradado"`.
+Groq y xAI usan la misma interfaz compatible con OpenAI, con timeout,
+reintentos limitados y backoff; el contexto enviado al LLM se minimiza a
+iniciador, monto y bloque.
 
 Después, en terminales separadas:
 
@@ -336,8 +360,18 @@ const unsubscribe = aureo.subscribe('Transfer', (event) => {
   console.log(result);
 });
 
+// Para métricas independientes del backend:
+// const result = await aureo.recordCorporateTransfer(beneficiary, 1000n, reference);
+// console.log(aureo.metrics.snapshot());
+
 // await aureo.close();
 ```
+
+`aureo.metrics.snapshot()` mantiene contadores en memoria y no necesita que el
+backend o su WebSocket estén activos. `aureo.recordCorporateTransfer(...)`
+confirma la transacción, calcula la política local y devuelve la transferencia,
+la política y el snapshot actualizado. Los montos se conservan como strings en
+la salida para evitar pérdida de precisión.
 
 Consulta la documentación del paquete en
 [`packages/sdk/README.md`](packages/sdk/README.md).
@@ -393,6 +427,7 @@ npm run docker:logs
 ## Documentación adicional
 
 - [Arquitectura detallada](md/ARQUITECTURA.md)
+- [Presentación del proyecto](md/PRESENTACION.md)
 - [Desarrollo con Docker](md/DEVELOPMENT.md)
 - [Manual de la CLI](md/CLI.md)
 - [Guía de la CLI junto al código](cli-client/README.md)

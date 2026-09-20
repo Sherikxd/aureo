@@ -20,15 +20,17 @@ npm run demo:case -- speed
 npm run demo:case -- volume
 ```
 
-El runner despliega un contrato nuevo para cada ejecución, usa la primera cuenta
-prefunded de Hardhat, asigna `OPERATOR_ROLE` y `COMPLIANCE_ROLE`, ejecuta el
-escenario y muestra sus transacciones, bloques, referencias y acciones de
-compliance.
+El runner reutiliza el contrato desplegado en Hardhat, usa la primera cuenta
+prefunded, asigna `OPERATOR_ROLE` y `COMPLIANCE_ROLE`, ejecuta el escenario y
+muestra sus transacciones, bloques, referencias, acciones de compliance y
+métricas calculadas directamente por `@aureo/sdk`.
 
 Estos casos son simulaciones locales: no mueven fondos reales, no llaman a
 Grok, no usan el backend y no conectan con una red pública. Las transacciones sí
 son reales dentro de la blockchain local y ejercitan las validaciones,
 eventos, roles y estado de `AureoCore`.
+Las métricas del SDK incluyen operaciones, monto total, riesgo, MFA y
+recomendaciones de bloqueo; no dependen del backend ni del WebSocket.
 
 ## Casos disponibles
 

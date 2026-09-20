@@ -25,7 +25,24 @@ runtime_file="$(mktemp)"
 cleanup() { rm -f "$runtime_file"; }
 trap cleanup EXIT
 
-AUREO_RUNTIME_ENV="$runtime_file" AUREO_LOCAL_DEFAULT_ACCOUNT=true bash scripts/deploy-blockchain.sh localhost
+deployment_file="blockchain/ignition/deployments/chain-31337/deployed_addresses.json"
+if [[ -f "$deployment_file" ]]; then
+  address="$(
+    node --input-type=module -e "
+      import { readFileSync } from 'node:fs';
+      const deployed = JSON.parse(readFileSync(process.argv[1], 'utf8'));
+      process.stdout.write(deployed['AureoCoreModule#AureoCore'] ?? '');
+    " "$deployment_file"
+  )"
+  if [[ -z "$address" ]]; then
+    printf 'El archivo de despliegue no contiene la dirección de AureoCore.\n' >&2
+    exit 1
+  fi
+  printf 'Usando AureoCore existente en %s.\n' "$address"
+  printf 'AUREO_CORE_ADDRESS=%s\n' "$address" > "$runtime_file"
+else
+  AUREO_RUNTIME_ENV="$runtime_file" AUREO_LOCAL_DEFAULT_ACCOUNT=true bash scripts/deploy-blockchain.sh localhost
+fi
 set -a
 # shellcheck disable=SC1091
 source "$runtime_file"

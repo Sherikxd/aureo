@@ -5,8 +5,9 @@ Middleware open source para aplicaciones Ethereum:
 - `createEthereumSigner`: wallet/signer con validación de dirección pública.
 - `createEthereumMonitor`: suscripción WebSocket a eventos de cualquier contrato.
 - `evaluateEthereumPolicy`: políticas deterministas de velocidad y volumen.
+- `createMetrics`: métricas locales de operaciones, riesgo, MFA y bloqueos.
 - `createAureoClient`: fachada para configurar provider, signer, contrato, monitor
-  y políticas en una sola integración.
+  y métricas en una sola integración.
 
 ## Integración rápida
 
@@ -29,6 +30,13 @@ const aureo = createAureoClient({
   privateKey: process.env.ETH_PRIVATE_KEY,
   publicAddress: process.env.ETH_PUBLIC_ADDRESS,
 });
+
+const result = await aureo.recordCorporateTransfer(
+  '0x0000000000000000000000000000000000000001',
+  1000n,
+  '0x'.padEnd(66, '0'),
+);
+console.log(result.policy, result.metrics);
 
 const unsubscribe = aureo.subscribe('CorporateTransferRecorded', (event) => {
   const policy = aureo.evaluatePolicy([
@@ -53,10 +61,37 @@ const unsubscribe = aureo.subscribe('CorporateTransferRecorded', (event) => {
   esperada.
 - **Eventos:** añade `wsRpcUrl` y usa `getMonitor()`.
 - **Políticas:** usa `aureo.evaluatePolicy(...)` sin configurar blockchain.
+- **Métricas:** usa `aureo.metrics.snapshot()` o registra transferencias mediante
+  `aureo.recordCorporateTransfer(...)`. Los contadores se calculan localmente y
+  no dependen del backend ni de un WebSocket.
 
 El cliente no expone la clave privada en sus propiedades ni en los eventos. En
 producción, carga las claves desde un secret manager, HSM, Safe o proveedor
 MPC; no las incluyas directamente en el código.
+
+### Snapshot de métricas
+
+`recordCorporateTransfer` registra la transferencia confirmada en el colector
+local y devuelve el snapshot actualizado. También puedes consultar el snapshot
+en cualquier momento:
+
+```js
+console.log(aureo.metrics.snapshot());
+// {
+//   transfers: 3,
+//   totalAmount: '372000',
+//   byRisk: { bajo: 2, medio: 1 },
+//   mfaRequired: 1,
+//   contractBlocks: 0,
+//   lastPolicy: { ... },
+//   lastVerdict: null
+// }
+```
+
+`totalAmount` se serializa como string para conservar precisión. Las métricas
+son locales al proceso, se reinician al crear un nuevo cliente y no requieren
+backend, WebSocket ni xAI. `recordVerdict` permite añadir un veredicto externo
+al conteo cuando una aplicación también consume el backend.
 
 ```js
 import { createEthereumMonitor, evaluateEthereumPolicy } from '@aureo/sdk';

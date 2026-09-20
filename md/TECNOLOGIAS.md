@@ -15,8 +15,9 @@ de cada una dentro del flujo de observabilidad y compliance Web3.
 | Acceso blockchain     | ethers.js 6             | Consultar logs RPC, recuperar eventos y leer datos    |
 | Backend HTTP          | `node:http`             | Exponer salud y reportes                              |
 | Backend realtime      | `ws`                    | Publicar veredictos por WebSocket                     |
-| Análisis IA           | SDK OpenAI              | Consumir la API compatible de xAI                     |
-| Modelo                | xAI/Grok                | Clasificar riesgo después de las reglas deterministas |
+| Métricas SDK          | JavaScript + `bigint`  | Contadores locales de operaciones y políticas         |
+| Análisis IA           | SDK OpenAI              | Consumir APIs compatibles de Groq o xAI                |
+| Modelo                | Groq / xAI              | Clasificar riesgo después de las reglas deterministas |
 | Cliente               | Commander + `ws`        | CLI para stream y consultas de reportes               |
 | Contenedores          | Docker Compose          | Orquestar nodo, despliegue, backend y CLI             |
 | Servicio Linux        | systemd                 | Mantener el backend en ejecución en servidores        |
@@ -81,12 +82,13 @@ El cuerpo de reportes tiene un límite de 1 MiB y el puerto se valida al iniciar
 conectados. Los últimos 100 mensajes se restauran desde el estado persistido
 para enviarlos al conectarse un nuevo cliente.
 
-### OpenAI SDK y xAI
+### OpenAI SDK, Groq y xAI
 
-El SDK oficial de OpenAI se usa por compatibilidad de API. El backend cambia
-`baseURL` a `https://api.x.ai/v1` y selecciona el modelo mediante `XAI_MODEL`.
-La respuesta solicita JSON, pero siempre se valida localmente antes de
-publicarla. La clave se lee desde `XAI_API_KEY`.
+El SDK oficial de OpenAI se usa por compatibilidad de API. El backend selecciona
+Groq (`https://api.groq.com/openai/v1`) o xAI (`https://api.x.ai/v1`) mediante
+`LLM_PROVIDER`; en modo `auto` prioriza Groq. `GROQ_MODEL` y `XAI_MODEL`
+permiten elegir el modelo. La respuesta solicita JSON, pero siempre se valida
+localmente antes de publicarla.
 
 El modelo no sustituye las reglas de negocio: las reglas de velocidad y volumen
 se ejecutan antes de llamar a la IA, y el resultado de la IA no puede rebajar
@@ -133,5 +135,9 @@ histórico y los veredictos en `BACKEND_STATE_FILE`. La ingesta consulta logs
 desde el último bloque guardado, por lo que puede recuperar eventos después de
 una desconexión o reinicio y evita duplicados por `transactionHash` y `logIndex`.
 Las reglas de montos usan enteros exactos (`bigint`) en lugar de `Number`.
+`@aureo/sdk` expone `createMetrics()` y `aureo.metrics.snapshot()` para
+contadores locales de operaciones, riesgo, MFA y recomendaciones de bloqueo;
+estos contadores viven en memoria y no sustituyen un sistema histórico.
 Para producción todavía se recomienda migrar este archivo a una base durable
-con transacciones, autenticación del stream, métricas y backoff configurable.
+con transacciones, autenticación del stream, exportación de métricas y backoff
+configurable.

@@ -77,6 +77,7 @@ function getHistory(history, address) {
     history instanceof Map
       ? (history.get(address) ?? history.get(address.toLowerCase()))
       : (history[address] ?? history[address.toLowerCase()]);
+  if (values === undefined) return [];
   if (!Array.isArray(values)) throw new Error(`Histórico inválido para ${address}.`);
   return values.map(toAmount);
 }

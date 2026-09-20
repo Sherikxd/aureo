@@ -11,10 +11,10 @@ WebSocket y existe una wallet con los roles necesarios.
 ## Ejecutar los casos localmente
 
 Los tres casos están almacenados y documentados en
-[`examples/cases/`](../examples/cases/). Tienen un runner reproducible sobre un nodo Hardhat. No usan
-fondos reales, redes públicas, Grok ni el backend: ejecutan las transacciones
-reales contra el contrato local, validan sus eventos y muestran la evidencia en
-JSON.
+[`examples/cases/`](../examples/cases/). Tienen un runner reproducible sobre un
+nodo Hardhat. No usan fondos reales, redes públicas, Grok ni el backend:
+ejecutan transacciones contra el contrato local, validan sus eventos y
+muestran evidencia y métricas del SDK en JSON.
 
 En una terminal inicia el nodo:
 
@@ -30,11 +30,17 @@ npm run demo:case -- speed
 npm run demo:case -- volume
 ```
 
-El runner despliega `AureoCore` con la primera cuenta prefunded de Hardhat,
-asigna los roles necesarios para el demo, ejecuta el caso y limpia el estado de
-pausa al finalizar. Para un despliegue con una wallet propia usa el flujo
+El runner reutiliza `AureoCore` si ya fue desplegado por `start:local` o
+`deploy:blockchain`; si no existe un despliegue local, lo crea con la primera
+cuenta prefunded de Hardhat. Asigna los roles necesarios, ejecuta el caso y
+limpia el estado de pausa al finalizar. Para un despliegue con una wallet propia usa el flujo
 manual de `deploy:blockchain` y proporciona `AUREO_CORE_ADDRESS`; la cuenta
 debe tener fondos y los roles correspondientes.
+
+El JSON resultante incluye `metrics`, generado por `@aureo/sdk`:
+`transfers`, `totalAmount`, `byRisk`, `mfaRequired` y `contractBlocks`. Esta
+salida se actualiza durante la ejecución de cada caso y no requiere backend,
+ventana temporal ni WebSocket.
 
 La explicación proceso por proceso de cada simulación está en
 [`examples/cases/README.md`](../examples/cases/README.md).

@@ -3,6 +3,9 @@ import { evaluateEthereumPolicy } from '@aureo/sdk';
 
 const RISK_LEVELS = new Set(['bajo', 'medio', 'alto', 'critico']);
 const RISK_RANK = { bajo: 0, medio: 1, alto: 2, critico: 3 };
+const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_MAX_RETRIES = 2;
+const DEFAULT_RETRY_DELAY_MS = 500;
 
 /**
  * @typedef {Object} RiskVerdict
@@ -10,21 +13,40 @@ const RISK_RANK = { bajo: 0, medio: 1, alto: 2, critico: 3 };
  * @property {string} motivo
  * @property {boolean} bloquear_contrato
  * @property {boolean} requiere_mfa
+ * @property {'groq'|'xai'|'determinista'|'determinista_degradado'} fuente
  */
 
 /**
- * Creates a stateless analyzer backed by xAI's OpenAI-compatible API.
- * @param {{apiKey?: string, baseURL?: string, model?: string}} [options]
+ * Creates a stateless analyzer backed by an OpenAI-compatible provider.
+ * @param {{provider?: 'groq'|'xai'|'auto'|'none', apiKey?: string, baseURL?: string, model?: string, timeoutMs?: number, maxRetries?: number, retryDelayMs?: number}} [options]
  */
 export function createAnalyzer(options = {}) {
-  const apiKey = options.apiKey ?? process.env.XAI_API_KEY;
-  if (!apiKey) throw new Error('XAI_API_KEY es obligatorio para iniciar el analizador.');
-
-  const client = new OpenAI({
-    apiKey,
-    baseURL: options.baseURL ?? process.env.XAI_BASE_URL ?? 'https://api.x.ai/v1',
-  });
-  const model = options.model ?? process.env.XAI_MODEL ?? 'grok-4.6';
+  const provider = resolveProvider(options);
+  const providerConfig = getProviderConfig(provider, options);
+  const apiKey = options.apiKey ?? providerConfig.apiKey;
+  const client = apiKey
+    ? new OpenAI({
+        apiKey,
+        baseURL: options.baseURL ?? providerConfig.baseURL,
+        timeout: options.timeoutMs ?? parsePositiveInteger(
+          process.env.LLM_TIMEOUT_MS ?? process.env.XAI_TIMEOUT_MS,
+          DEFAULT_TIMEOUT_MS,
+        ),
+      })
+    : null;
+  const model = options.model ?? providerConfig.model;
+  const timeoutMs =
+    options.timeoutMs ??
+    parsePositiveInteger(process.env.LLM_TIMEOUT_MS ?? process.env.XAI_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
+  const maxRetries =
+    options.maxRetries ??
+    parseNonNegativeInteger(process.env.LLM_MAX_RETRIES ?? process.env.XAI_MAX_RETRIES, DEFAULT_MAX_RETRIES);
+  const retryDelayMs =
+    options.retryDelayMs ??
+    parseNonNegativeInteger(
+      process.env.LLM_RETRY_DELAY_MS ?? process.env.XAI_RETRY_DELAY_MS,
+      DEFAULT_RETRY_DELAY_MS,
+    );
 
   return {
     /**
@@ -44,39 +66,52 @@ export function createAnalyzer(options = {}) {
           motivo: rules.reasons.join(' '),
           bloquear_contrato: true,
           requiere_mfa: false,
+          fuente: 'determinista',
         };
       }
 
+      if (!client) return fallbackVerdict(rules, 'No hay credenciales de un proveedor LLM configurado.');
+
       try {
-        const completion = await client.chat.completions.create({
-          model,
-          temperature: 0,
-          messages: [
-            {
-              role: 'system',
-              content:
-                'Eres un analista senior de fraude Web3. Responde únicamente con el objeto JSON solicitado.',
-            },
-            {
-              role: 'user',
-              content: JSON.stringify({
-                tarea: 'Clasifica el riesgo agregado de estos eventos corporativos.',
-                eventos: events,
-                reglas_deterministas: rules.reasons,
-                esquema: {
-                  nivel_riesgo: 'bajo|medio|alto|critico',
-                  motivo: 'explicación breve en español',
-                  bloquear_contrato: 'boolean',
-                  requiere_mfa: 'boolean',
+        const completion = await withRetry(
+          () =>
+            client.chat.completions.create({
+              model,
+              temperature: 0,
+              messages: [
+                {
+                  role: 'system',
+                  content:
+                    'Eres un analista senior de fraude Web3. Responde únicamente con el objeto JSON solicitado.',
                 },
-              }),
-            },
-          ],
-          response_format: { type: 'json_object' },
-        });
-        const verdict = validateVerdict(JSON.parse(completion.choices[0]?.message?.content ?? ''));
+                {
+                  role: 'user',
+                  content: JSON.stringify({
+                    tarea: 'Clasifica el riesgo agregado de estos eventos corporativos.',
+                    eventos: events.map(toModelEvent),
+                    reglas_deterministas: rules.reasons,
+                    esquema: {
+                      nivel_riesgo: 'bajo|medio|alto|critico',
+                      motivo: 'explicación breve en español',
+                      bloquear_contrato: 'boolean',
+                      requiere_mfa: 'boolean',
+                    },
+                  }),
+                },
+              ],
+              response_format: { type: 'json_object' },
+            }),
+          maxRetries,
+          retryDelayMs,
+          timeoutMs,
+        );
+        const verdict = validateVerdict(
+          JSON.parse(completion.choices[0]?.message?.content ?? ''),
+          rules,
+        );
         return {
           ...verdict,
+          fuente: provider,
           nivel_riesgo:
             RISK_RANK[verdict.nivel_riesgo] >= RISK_RANK[rules.minimumRisk]
               ? verdict.nivel_riesgo
@@ -85,9 +120,7 @@ export function createAnalyzer(options = {}) {
           requiere_mfa: verdict.requiere_mfa || rules.volumeViolation,
         };
       } catch (error) {
-        throw new Error(`No se pudo analizar la ventana con xAI: ${error.message}`, {
-          cause: error,
-        });
+        return fallbackVerdict(rules, `LLM no disponible: ${error.message}`);
       }
     },
   };
@@ -111,7 +144,7 @@ function isTransfer(event) {
  * @param {unknown} value
  * @returns {RiskVerdict}
  */
-function validateVerdict(value) {
+function validateVerdict(value, rules) {
   if (!value || typeof value !== 'object') throw new Error('El veredicto no es un objeto JSON.');
   const verdict = /** @type {Record<string, unknown>} */ (value);
   if (!RISK_LEVELS.has(verdict.nivel_riesgo)) throw new Error('nivel_riesgo inválido.');
@@ -125,5 +158,88 @@ function validateVerdict(value) {
     throw new Error('requiere_mfa inválido.');
   }
   verdict.requiere_mfa ??= false;
+  if (RISK_RANK[verdict.nivel_riesgo] >= RISK_RANK.alto) verdict.bloquear_contrato = true;
+  if (rules.volumeViolation) verdict.requiere_mfa = true;
   return /** @type {RiskVerdict} */ (verdict);
+}
+
+function fallbackVerdict(rules, reason) {
+  return {
+    nivel_riesgo: rules.minimumRisk,
+    motivo: [...rules.reasons, reason].filter(Boolean).join(' '),
+    bloquear_contrato: false,
+    requiere_mfa: rules.volumeViolation,
+    fuente: 'determinista_degradado',
+  };
+}
+
+function toModelEvent(event) {
+  return {
+    initiator: event.initiator,
+    amount: event.amount,
+    blockNumber: event.blockNumber,
+  };
+}
+
+async function withRetry(operation, maxRetries, retryDelayMs, timeoutMs) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`timeout después de ${timeoutMs} ms`)), timeoutMs),
+        ),
+      ]);
+    } catch (error) {
+      lastError = error;
+      if (attempt === maxRetries) break;
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * 2 ** attempt));
+    }
+  }
+  throw lastError;
+}
+
+function parsePositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseNonNegativeInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function resolveProvider(options) {
+  const configured = options.provider ?? process.env.LLM_PROVIDER ?? 'auto';
+  if (!['auto', 'groq', 'xai', 'none'].includes(configured)) {
+    throw new Error('LLM_PROVIDER debe ser auto, groq, xai o none.');
+  }
+  if (configured !== 'auto') return configured;
+  if (process.env.GROQ_API_KEY) return 'groq';
+  if (process.env.XAI_API_KEY) return 'xai';
+  return 'none';
+}
+
+function getProviderConfig(provider, options) {
+  if (provider === 'groq') {
+    return {
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: process.env.GROQ_BASE_URL ?? 'https://api.groq.com/openai/v1',
+      model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+    };
+  }
+  if (provider === 'xai') {
+    return {
+      apiKey: process.env.XAI_API_KEY,
+      baseURL: process.env.XAI_BASE_URL ?? 'https://api.x.ai/v1',
+      model: process.env.XAI_MODEL ?? 'grok-4.6',
+    };
+  }
+  if (provider === 'none') return { apiKey: undefined, baseURL: undefined, model: undefined };
+  return {
+    apiKey: options.apiKey,
+    baseURL: options.baseURL,
+    model: options.model,
+  };
 }

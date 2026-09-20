@@ -9,7 +9,8 @@ de `AureoCore` con el analizador de riesgo y los clientes HTTP/WebSocket.
 - npm 10 o superior.
 - Un nodo RPC HTTP compatible con `eth_getLogs`.
 - Un contrato `AureoCore` desplegado.
-- Una clave de xAI para generar análisis con Grok.
+- Una clave de xAI para enriquecer análisis con Grok (opcional; existe modo
+  degradado determinista).
 
 El backend no mueve fondos ni ejecuta automáticamente las recomendaciones de
 bloqueo. Publica veredictos auditables para que una política externa decida la
@@ -45,7 +46,14 @@ Completa al menos estas variables:
 BLOCKCHAIN_WS_URL=ws://127.0.0.1:8545
 BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
 AUREO_CORE_ADDRESS=0x...
+LLM_PROVIDER=auto
+GROQ_API_KEY=...
+GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_MODEL=llama-3.3-70b-versatile
 XAI_API_KEY=...
+XAI_TIMEOUT_MS=15000
+XAI_MAX_RETRIES=2
+XAI_RETRY_DELAY_MS=500
 BACKEND_STATE_FILE=.runtime/backend-state.json
 ```
 
@@ -66,17 +74,28 @@ Variables opcionales:
 
 | Variable              |        Predeterminado | Uso                                     |
 | --------------------- | --------------------: | --------------------------------------- |
+| `LLM_PROVIDER`        | `auto`                | `groq`, `xai`, `none` o selección automática |
+| `GROQ_BASE_URL`       | `https://api.groq.com/openai/v1` | Endpoint de Groq |
+| `GROQ_MODEL`          | `llama-3.3-70b-versatile` | Modelo usado en Groq |
+| `LLM_TIMEOUT_MS`      |              `15000` | Timeout común de proveedores (ms) |
+| `LLM_MAX_RETRIES`     |                  `2` | Reintentos comunes de proveedores |
+| `LLM_RETRY_DELAY_MS`  |                `500` | Espera inicial común entre reintentos |
 | `XAI_BASE_URL`        | `https://api.x.ai/v1` | Endpoint compatible con OpenAI          |
-| `XAI_MODEL`           |            `grok-4.6` | Modelo usado por el analizador          |
+| `XAI_MODEL`           |            `grok-4.6` | Modelo usado en xAI                     |
+| `XAI_TIMEOUT_MS`       |              `15000` | Timeout de cada solicitud al LLM (ms)   |
+| `XAI_MAX_RETRIES`      |                  `2` | Reintentos después de un fallo          |
+| `XAI_RETRY_DELAY_MS`   |                `500` | Espera inicial entre reintentos (ms)    |
 | `OPERATIONAL_RESERVE` |                 vacío | Umbral de volumen que activa MFA        |
 | `BACKEND_PORT`        |                `3000` | Puerto HTTP y WebSocket                 |
+| `BACKEND_WINDOW_MS`   |              `60000` | Ventana de agrupación antes del análisis |
 | `BLOCKCHAIN_RPC_URL`  | `BLOCKCHAIN_WS_URL` convertido a HTTP | RPC para recuperar logs y hacer backfill |
 | `BACKEND_STATE_FILE`  | `.runtime/backend-state.json` | Cursor, cola, históricos y veredictos |
 | `BACKEND_LOG_LEVEL`   |                `info` | Reservada para configuración de logging |
 | `ETH_PRIVATE_KEY`     |                 vacío | Clave privada de la wallet operativa    |
 | `ETH_PUBLIC_ADDRESS`  |                 vacío | Dirección pública esperada de la wallet |
 
-No guardes `backend/.env` en el repositorio ni compartas `XAI_API_KEY`.
+No guardes `backend/.env` en el repositorio ni compartas `GROQ_API_KEY` o
+`XAI_API_KEY`.
 
 ## 3. Preparar la blockchain local
 
@@ -174,11 +193,19 @@ WebSocket, usando `ws://127.0.0.1:3000/stream`.
 1. El RPC consulta `CorporateTransferRecorded` desde el último bloque guardado.
 2. Los eventos recuperados se deduplican y se acumulan durante una ventana de un minuto.
 3. Las reglas deterministas revisan velocidad y volumen.
-4. Si no existe una regla inmediata, el analizador consulta xAI/Grok.
-5. La respuesta se valida contra los niveles `bajo`, `medio`, `alto` y
-   `critico`.
-6. El veredicto se persiste y se publica por `/stream`.
-7. Las cantidades recientes por iniciador alimentan la siguiente ventana.
+4. Si no existe una regla inmediata y hay un proveedor LLM configurado, el analizador envía
+   únicamente iniciador, monto y bloque al LLM.
+5. Cada solicitud tiene timeout y hasta `XAI_MAX_RETRIES` reintentos con
+   backoff exponencial.
+6. La respuesta se valida contra los niveles `bajo`, `medio`, `alto` y
+   `critico`, y se fuerzan coherencias: riesgo alto/crítico implica bloqueo y
+   volumen elevado implica MFA.
+7. Si el proveedor seleccionado no está configurado o falla después de los
+   reintentos, se publica un
+   veredicto `determinista_degradado`; la ventana no se pierde ni queda
+   reintentándose indefinidamente.
+8. El veredicto se persiste y se publica por `/stream`.
+9. Las cantidades recientes por iniciador alimentan la siguiente ventana.
 
 La cola pendiente está limitada a 10.000 entradas y el historial de veredictos
 a 100 entradas. El estado se conserva en el archivo configurado, pero en
@@ -244,8 +271,12 @@ npm run blockchain:test
 | Síntoma                                   | Revisión                                                                            |
 | ----------------------------------------- | ----------------------------------------------------------------------------------- |
 | `AUREO_CORE_ADDRESS es obligatorio`       | Define la dirección desplegada en `backend/.env`.                                   |
-| `XAI_API_KEY es obligatorio`              | Configura la clave sin comillas extra ni espacios.                                  |
+| `GROQ_API_KEY/XAI_API_KEY es obligatorio` | No son obligatorias: sin claves se usa el modo determinista degradado.              |
 | No conecta al RPC                         | Comprueba que Hardhat esté activo y que `BLOCKCHAIN_RPC_URL` use `http://` o `https://`. |
 | `/health` responde pero no llegan eventos | Verifica dirección, ABI, `BLOCKCHAIN_RPC_URL` y el cursor en `BACKEND_STATE_FILE`. |
 | `/stream` se desconecta                   | Revisa el proxy, el puerto `3000` y que permita upgrade WebSocket.                  |
 | `POST /reports` responde `400`            | Envía JSON válido con un campo `query` no vacío.                                    |
+
+Si aparecen veredictos `determinista_degradado`, revisa `LLM_PROVIDER`, la
+conectividad con Groq/xAI, los timeouts, reintentos y la cuota del proveedor. El sistema
+mantiene las reglas locales activas mientras el LLM no esté disponible.
