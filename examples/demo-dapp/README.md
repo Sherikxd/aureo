@@ -39,6 +39,57 @@ debe mostrar `speedViolation: true`. En este flujo local, tanto el despliegue
 como el demo usan la primera cuenta prefunded de Hardhat, aunque
 `examples/demo-dapp/.env` contenga una wallet configurada.
 
+## Qué procesos ejecuta la demo
+
+La demo reproduce un flujo completo de observabilidad para operaciones
+corporativas sobre Ethereum:
+
+1. **Conecta con la red local.** Usa el nodo Hardhat mediante HTTP para enviar
+   transacciones y WebSocket para observar los eventos confirmados.
+2. **Despliega `AureoCore`.** El script `npm run demo:run` compila el contrato,
+   reinicia el despliegue local y obtiene la dirección generada.
+3. **Selecciona la identidad operativa.** Por defecto usa la primera cuenta
+   prefunded de Hardhat, que recibe `DEFAULT_ADMIN_ROLE`, `OPERATOR_ROLE` y
+   `COMPLIANCE_ROLE` durante la construcción del contrato.
+4. **Registra transferencias corporativas.** Envía cuatro llamadas a
+   `recordCorporateTransfer`, con un beneficiario, monto y referencia únicos.
+5. **Persiste evidencia on-chain.** `AureoCore` asigna un identificador
+   incremental, guarda el iniciador, beneficiario, monto, referencia y marca de
+   tiempo, y publica `CorporateTransferRecorded`.
+6. **Monitorea los eventos.** El monitor del SDK recibe cada evento por
+   WebSocket y lo transforma en un registro local para el análisis.
+7. **Evalúa la política.** `evaluateEthereumPolicy` revisa la velocidad y el
+   volumen de las operaciones. Al detectar cuatro operaciones de la misma
+   dirección en cinco bloques, activa `speedViolation`.
+8. **Cierra la ejecución.** Espera todos los eventos, imprime el resumen JSON y
+   cierra el monitor WebSocket y el proveedor HTTP.
+
+La demo no ejecuta pagos reales, no mueve tokens y no llama al backend ni a
+Grok. El monto representa datos de prueba y las operaciones solo persisten en
+la cadena local de Hardhat.
+
+## Qué escenario está simulando
+
+El escenario representa a un operador que registra varias transferencias
+corporativas consecutivas desde la misma wallet. Las primeras operaciones
+parecen normales, pero la cuarta dentro de una ventana de cinco bloques activa
+una señal de riesgo por velocidad. El sistema no bloquea automáticamente la
+transacción en esta demo: genera una evidencia y un veredicto para que una capa
+de compliance o un backend pueda revisar el caso y decidir si requiere MFA,
+alerta o pausa del circuito.
+
+En términos operativos, se simula:
+
+- una dapp enviando operaciones a un contrato corporativo;
+- un monitor de compliance observando eventos en tiempo real;
+- una regla determinista detectando actividad anómala;
+- la generación de una señal auditable para una respuesta posterior.
+
+El flujo deliberadamente no incluye análisis con IA, autenticación MFA ni
+activación del `Circuit Breaker`; esos procesos pertenecen al backend y a los
+casos de uso documentados en [`md/DEVELOPMENT.md`](../../md/DEVELOPMENT.md) y
+[`md/Ejemplos_Casos.md`](../../md/Ejemplos_Casos.md).
+
 ## Probar una wallet Ethereum
 
 Por defecto la demo usa la cuenta `0` que expone Hardhat mediante
