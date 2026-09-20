@@ -184,6 +184,7 @@ Desde el host:
 ```bash
 npm run cli -- stream
 npm run cli -- report "Resume los veredictos recientes"
+npm run cli -- status
 ```
 
 Dentro de Docker:
@@ -215,6 +216,7 @@ En `backend/.env`, configura:
 
 ```dotenv
 BLOCKCHAIN_WS_URL=ws://127.0.0.1:8545
+BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
 AUREO_CORE_ADDRESS=0x...
 XAI_API_KEY=tu-clave-de-xai
 XAI_BASE_URL=https://api.x.ai/v1
@@ -224,6 +226,12 @@ ETH_PUBLIC_ADDRESS=0x...
 BACKEND_PORT=3000
 OPERATIONAL_RESERVE=100000
 ```
+
+El backend guarda su cursor de blockchain, eventos pendientes, históricos y
+veredictos en `.runtime/backend-state.json` por defecto. Configura
+`BACKEND_STATE_FILE` para usar otra ubicación persistente. La ingesta usa
+`BLOCKCHAIN_RPC_URL` para recuperar logs desde el último bloque procesado tras
+una desconexión o reinicio.
 
 Después, en terminales separadas:
 

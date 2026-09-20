@@ -39,6 +39,18 @@ npm --workspace cli-client link
 aureo --help
 ```
 
+## Estado del backend
+
+Comprueba conectividad, salud y wallet operativa:
+
+```bash
+aureo status
+aureo status --url http://127.0.0.1:3000 --json
+```
+
+El comando devuelve código `1` si alguno de los endpoints no responde
+correctamente.
+
 ## Streaming de veredictos
 
 ```bash
@@ -52,6 +64,18 @@ El comando abre un WebSocket y muestra cada veredicto recibido. Finaliza con
 
 ```bash
 aureo stream --url ws://backend.example.com/stream
+```
+
+Para una salida legible en terminal, en lugar de JSON:
+
+```bash
+aureo stream --format pretty
+```
+
+En automatizaciones evita el prompt MFA:
+
+```bash
+aureo stream --no-mfa-prompt --format json
 ```
 
 La CLI valida la URL antes de conectarse, ignora mensajes WebSocket que no sean
@@ -79,6 +103,12 @@ La respuesta se imprime con formato JSON. Para otro backend:
 
 ```bash
 aureo report --url http://127.0.0.1:3000 "Resume las alertas críticas"
+```
+
+Para una salida resumida:
+
+```bash
+aureo report --format pretty "Resume las alertas críticas"
 ```
 
 `report` rechaza consultas vacías, aplica un timeout de 15 segundos y muestra el

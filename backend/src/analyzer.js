@@ -29,7 +29,7 @@ export function createAnalyzer(options = {}) {
   return {
     /**
      * @param {unknown[]} events
-     * @param {{historicalAmounts?: Map<string, number[]>|Record<string, number[]>, operationalReserve?: number}} [context]
+     * @param {{historicalAmounts?: Map<string, Array<string|number|bigint>>|Record<string, Array<string|number|bigint>>, operationalReserve?: string|number|bigint}} [context]
      * @returns {Promise<RiskVerdict>}
      */
     async analyzeWindow(events, context = {}) {
@@ -96,7 +96,7 @@ export function createAnalyzer(options = {}) {
 /**
  * Applies rules that must not depend on model availability.
  * @param {unknown[]} events
- * @param {{historicalAmounts?: Map<string, number[]>|Record<string, number[]>, operationalReserve?: number}} context
+ * @param {{historicalAmounts?: Map<string, Array<string|number|bigint>>|Record<string, Array<string|number|bigint>>, operationalReserve?: string|number|bigint}} context
  */
 export function evaluateRules(events, context = {}) {
   const transfers = events.filter((event) => isTransfer(event));

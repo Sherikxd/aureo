@@ -43,8 +43,10 @@ Completa al menos estas variables:
 
 ```dotenv
 BLOCKCHAIN_WS_URL=ws://127.0.0.1:8545
+BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
 AUREO_CORE_ADDRESS=0x...
 XAI_API_KEY=...
+BACKEND_STATE_FILE=.runtime/backend-state.json
 ```
 
 Para habilitar la wallet Ethereum operativa del backend:
@@ -68,6 +70,8 @@ Variables opcionales:
 | `XAI_MODEL`           |            `grok-4.6` | Modelo usado por el analizador          |
 | `OPERATIONAL_RESERVE` |                 vacío | Umbral de volumen que activa MFA        |
 | `BACKEND_PORT`        |                `3000` | Puerto HTTP y WebSocket                 |
+| `BLOCKCHAIN_RPC_URL`  | `BLOCKCHAIN_WS_URL` convertido a HTTP | RPC para recuperar logs y hacer backfill |
+| `BACKEND_STATE_FILE`  | `.runtime/backend-state.json` | Cursor, cola, históricos y veredictos |
 | `BACKEND_LOG_LEVEL`   |                `info` | Reservada para configuración de logging |
 | `ETH_PRIVATE_KEY`     |                 vacío | Clave privada de la wallet operativa    |
 | `ETH_PUBLIC_ADDRESS`  |                 vacío | Dirección pública esperada de la wallet |
@@ -91,6 +95,11 @@ npm --workspace blockchain run deploy:local
 
 El despliegue genera la dirección del contrato. Asigna esa dirección a
 `AUREO_CORE_ADDRESS` en `backend/.env`.
+
+El backend consulta los logs mediante `BLOCKCHAIN_RPC_URL` desde el último
+bloque persistido. Así recupera eventos emitidos durante una desconexión o
+reinicio, aunque `BLOCKCHAIN_WS_URL` siga siendo la URL documentada para el
+endpoint WebSocket de la API.
 
 ## 4. Iniciar el backend
 

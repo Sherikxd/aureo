@@ -1,8 +1,10 @@
 import 'dotenv/config';
 import { createServer } from 'node:http';
+import { resolve } from 'node:path';
 import { ethers } from 'ethers';
 import { WebSocketServer } from 'ws';
 import { createAnalyzer } from './analyzer.js';
+import { loadState, saveState } from './state.js';
 import { createEthWallet } from './wallet.js';
 
 const ABI = [
@@ -14,9 +16,8 @@ const windowMs = 60_000;
 const maxBodyBytes = 1_048_576;
 const maxBufferedEvents = 10_000;
 const maxVerdicts = 100;
-const events = [];
-const historicalAmounts = new Map();
-const verdicts = [];
+const pollIntervalMs = 5_000;
+const stateFile = resolve(process.env.BACKEND_STATE_FILE ?? '.runtime/backend-state.json');
 const streamClients = new Set();
 
 /**
@@ -24,10 +25,18 @@ const streamClients = new Set();
  */
 export async function start() {
   const wsUrl = process.env.BLOCKCHAIN_WS_URL ?? 'ws://127.0.0.1:8545';
+  const rpcUrl = process.env.BLOCKCHAIN_RPC_URL ?? wsUrl.replace(/^ws/, 'http');
   const address = process.env.AUREO_CORE_ADDRESS;
   if (!address) throw new Error('AUREO_CORE_ADDRESS es obligatorio.');
 
-  const provider = new ethers.WebSocketProvider(wsUrl);
+  const state = loadState(stateFile);
+  const events = state.events;
+  const historicalAmounts = new Map(
+    Object.entries(state.historicalAmounts).map(([key, values]) => [key, values]),
+  );
+  const verdicts = state.verdicts;
+  let lastScannedBlock = state.lastScannedBlock;
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
   const contract = new ethers.Contract(address, ABI, provider);
   const ethWallet = createEthWallet(provider);
   const signedContract = ethWallet ? contract.connect(ethWallet.wallet) : null;
@@ -78,19 +87,10 @@ export async function start() {
   const port = parsePort(process.env.BACKEND_PORT ?? '3000');
   httpServer.listen(port, '0.0.0.0', () => console.log(`API Áureo escuchando en ${port}`));
 
-  contract.on('CorporateTransferRecorded', (...args) => {
-    const event = args.at(-1);
-    events.push({
-      type: 'CorporateTransferRecorded',
-      operationId: args[0].toString(),
-      initiator: args[1],
-      beneficiary: args[2],
-      amount: args[3].toString(),
-      operationReference: args[4],
-      blockNumber: event?.blockNumber ?? event?.log?.blockNumber,
-    });
-    if (events.length > maxBufferedEvents) events.splice(0, events.length - maxBufferedEvents);
-  });
+  const transferTopic = contract.interface.getEvent('CorporateTransferRecorded').topicHash;
+  let polling = false;
+  const pollTimer = setInterval(() => pollEvents().catch((error) => console.error(error)), pollIntervalMs);
+  await pollEvents();
 
   let processingWindow = false;
   const windowTimer = setInterval(async () => {
@@ -98,11 +98,13 @@ export async function start() {
     if (!events.length) return;
     processingWindow = true;
     const window = events.splice(0, events.length);
+    let windowAnalyzed = false;
     try {
       const verdict = await analyzer.analyzeWindow(window, {
         historicalAmounts,
-        operationalReserve: Number(process.env.OPERATIONAL_RESERVE ?? Number.NaN),
+        operationalReserve: process.env.OPERATIONAL_RESERVE || undefined,
       });
+      windowAnalyzed = true;
       const message = { type: 'risk_verdict', verdict, receivedAt: new Date().toISOString() };
       verdicts.push(message);
       if (verdicts.length > maxVerdicts) verdicts.shift();
@@ -121,17 +123,25 @@ export async function start() {
       for (const event of window) {
         const key = event.initiator.toLowerCase();
         const history = historicalAmounts.get(key) ?? [];
-        history.push(Number(event.amount));
+        history.push(event.amount);
         historicalAmounts.set(key, history.slice(-100));
       }
+      persistState();
     } catch (error) {
+      if (!windowAnalyzed) {
+        events.unshift(...window);
+        if (events.length > maxBufferedEvents) {
+          events.splice(maxBufferedEvents);
+        }
+        persistState();
+      }
       console.error(error);
     } finally {
       processingWindow = false;
     }
   }, windowMs);
 
-  console.log(`Áureo escuchando eventos en ${wsUrl}`);
+  console.log(`Áureo recuperando eventos desde ${rpcUrl}`);
   console.log(
     ethWallet
       ? `Wallet Ethereum operativa: ${ethWallet.address}`
@@ -140,11 +150,11 @@ export async function start() {
 
   const shutdown = async (signal) => {
     clearInterval(windowTimer);
-    contract.removeAllListeners();
+    clearInterval(pollTimer);
     for (const client of streamClients) client.close();
     await new Promise((resolve) => webSocketServer.close(resolve));
     await new Promise((resolve) => httpServer.close(resolve));
-    await provider.destroy();
+    provider.destroy();
     console.log(`Áureo detenido (${signal}).`);
   };
 
@@ -152,6 +162,52 @@ export async function start() {
   process.once('SIGTERM', () => shutdown('SIGTERM').catch(console.error));
 
   return { httpServer, provider, shutdown };
+
+  async function pollEvents() {
+    if (polling) return;
+    polling = true;
+    try {
+      const latestBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(lastScannedBlock + 1, 0);
+      if (fromBlock <= latestBlock) {
+        const logs = await provider.getLogs({
+          address,
+          topics: [transferTopic],
+          fromBlock,
+          toBlock: latestBlock,
+        });
+        for (const log of logs) {
+          const parsed = contract.interface.parseLog(log);
+          if (!parsed) continue;
+          const eventKey = `${log.transactionHash}:${log.index}`;
+          if (events.some((item) => item.eventKey === eventKey)) continue;
+          events.push({
+            eventKey,
+            type: 'CorporateTransferRecorded',
+            operationId: parsed.args[0].toString(),
+            initiator: parsed.args[1],
+            beneficiary: parsed.args[2],
+            amount: parsed.args[3].toString(),
+            operationReference: parsed.args[4],
+            blockNumber: log.blockNumber,
+          });
+        }
+        lastScannedBlock = latestBlock;
+        persistState();
+      }
+    } finally {
+      polling = false;
+    }
+  }
+
+  function persistState() {
+    saveState(stateFile, {
+      lastScannedBlock,
+      events,
+      historicalAmounts: Object.fromEntries(historicalAmounts),
+      verdicts,
+    });
+  }
 }
 
 function sendJson(response, statusCode, payload) {

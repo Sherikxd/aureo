@@ -127,6 +127,11 @@ El contrato tiene pruebas Hardhat; el backend actualmente se valida con lint y
 comprobaciones de sintaxis, pero todavía no cuenta con una suite automatizada de
 integración.
 
-Para producción todavía se recomienda incorporar persistencia idempotente,
-autenticación del stream, métricas, reintentos con backoff y una cola duradera
-antes de invocar al modelo.
+El backend conserva una ventana fallida en la cola para reintentarla en el
+siguiente ciclo, y persiste esa cola junto con el cursor de bloques, el
+histórico y los veredictos en `BACKEND_STATE_FILE`. La ingesta consulta logs
+desde el último bloque guardado, por lo que puede recuperar eventos después de
+una desconexión o reinicio y evita duplicados por `transactionHash` y `logIndex`.
+Las reglas de montos usan enteros exactos (`bigint`) en lugar de `Number`.
+Para producción todavía se recomienda migrar este archivo a una base durable
+con transacciones, autenticación del stream, métricas y backoff configurable.

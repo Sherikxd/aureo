@@ -6,6 +6,7 @@
   "license": "MIT",
   "exports": {
     ".": "./src/index.js",
+    "./client": "./src/client.js",
     "./wallet": "./src/wallet.js",
     "./monitor": "./src/monitor.js",
     "./policy": "./src/policy.js"

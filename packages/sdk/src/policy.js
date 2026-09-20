@@ -9,8 +9,8 @@
 /**
  * Evaluates reusable, model-independent transaction policies.
  *
- * @param {Array<{initiator: string, amount: string|number, blockNumber: number}>} transfers
- * @param {{historicalAmounts?: Map<string, number[]>|Record<string, number[]>, operationalReserve?: number}} [context]
+ * @param {Array<{initiator: string, amount: string|number|bigint, blockNumber: number}>} transfers
+ * @param {{historicalAmounts?: Map<string, Array<string|number|bigint>>|Record<string, Array<string|number|bigint>>, operationalReserve?: string|number|bigint}} [context]
  * @returns {PolicyResult}
  */
 export function evaluateEthereumPolicy(transfers, context = {}) {
@@ -20,13 +20,12 @@ export function evaluateEthereumPolicy(transfers, context = {}) {
   const volumeViolation = transfers.some((transfer) => {
     const amount = toAmount(transfer.amount);
     const history = getHistory(context.historicalAmounts, transfer.initiator);
-    const average = history.length
-      ? history.reduce((sum, value) => sum + value, 0) / history.length
-      : 0;
-    return (
-      (average > 0 && amount > average * 3) ||
-      (Number.isFinite(context.operationalReserve) && amount > context.operationalReserve)
-    );
+    const historyTotal = history.reduce((sum, value) => sum + value, 0n);
+    const exceedsHistory = history.length > 0 && amount * BigInt(history.length) > historyTotal * 3n;
+    const reserve = context.operationalReserve === undefined
+      ? null
+      : toAmount(context.operationalReserve);
+    return exceedsHistory || (reserve !== null && amount > reserve);
   });
 
   if (speedViolation) {
@@ -60,9 +59,16 @@ function hasSpeedViolation(transfers) {
 }
 
 function toAmount(value) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount < 0) throw new Error('Monto inválido.');
-  return amount;
+  if (typeof value === 'number' && (!Number.isSafeInteger(value) || value < 0)) {
+    throw new Error('Monto inválido: use un entero seguro, string o bigint.');
+  }
+  try {
+    const amount = BigInt(value);
+    if (amount < 0n) throw new Error();
+    return amount;
+  } catch {
+    throw new Error('Monto inválido: debe ser un entero no negativo.');
+  }
 }
 
 function getHistory(history, address) {
