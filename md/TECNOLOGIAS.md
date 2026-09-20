@@ -12,7 +12,7 @@ de cada una dentro del flujo de observabilidad y compliance Web3.
 | Contratos             | Solidity + OpenZeppelin | Registrar operaciones y alertas auditables            |
 | Blockchain local      | Hardhat Network         | Nodo RPC local y entorno de pruebas                   |
 | Despliegue blockchain | Hardhat Ignition        | Desplegar `AureoCore` de forma reproducible           |
-| Acceso blockchain     | ethers.js 6             | Escuchar eventos por WebSocket y leer datos           |
+| Acceso blockchain     | ethers.js 6             | Consultar logs RPC, recuperar eventos y leer datos    |
 | Backend HTTP          | `node:http`             | Exponer salud y reportes                              |
 | Backend realtime      | `ws`                    | Publicar veredictos por WebSocket                     |
 | Análisis IA           | SDK OpenAI              | Consumir la API compatible de xAI                     |
@@ -21,7 +21,7 @@ de cada una dentro del flujo de observabilidad y compliance Web3.
 | Contenedores          | Docker Compose          | Orquestar nodo, despliegue, backend y CLI             |
 | Servicio Linux        | systemd                 | Mantener el backend en ejecución en servidores        |
 | Calidad               | ESLint + Prettier       | Lint y formato consistente                            |
-| Demo                  | `examples/demo-dapp`    | Dapp mínima para probar el SDK contra Hardhat         |
+| Demo                  | `examples/`             | Dapp y casos operativos para probar SDK y contrato    |
 | Automatización        | `scripts/setup-env.sh`  | Crear configuración local sin sobrescribir secretos   |
 
 ## Node.js y ESM
@@ -60,9 +60,9 @@ codificar manualmente transacciones de despliegue.
 
 ### ethers.js
 
-El backend usa `ethers.WebSocketProvider` para recibir eventos del contrato sin
-polling. El contrato se instancia con una ABI mínima que incluye
-`CorporateTransferRecorded` y `AlertStarted`.
+El backend usa `ethers.JsonRpcProvider` y `eth_getLogs` para recuperar eventos
+desde el último bloque persistido. El contrato se instancia con una ABI mínima
+que incluye `CorporateTransferRecorded` y `AlertStarted`.
 
 ### Servidor HTTP nativo
 
@@ -78,8 +78,8 @@ El cuerpo de reportes tiene un límite de 1 MiB y el puerto se valida al iniciar
 ### WebSocket (`ws`)
 
 `ws` comparte el servidor HTTP y distribuye cada `risk_verdict` a los clientes
-conectados. Los últimos 100 mensajes se conservan en memoria para enviarlos al
-conectarse un nuevo cliente.
+conectados. Los últimos 100 mensajes se restauran desde el estado persistido
+para enviarlos al conectarse un nuevo cliente.
 
 ### OpenAI SDK y xAI
 

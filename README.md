@@ -47,7 +47,7 @@ adaptación. Permite a una dapp:
 │ AureoCore.sol       │
 │ Hardhat + Ignition  │
 └──────────┬──────────┘
-           │ eventos por WebSocket
+           │ logs recuperados por RPC
            v
 ┌─────────────────────┐
 │ Backend Node.js     │
@@ -71,10 +71,10 @@ adaptación. Permite a una dapp:
 | --------------- | ------------------------------------------------------------------------------- |
 | `blockchain/`   | Contrato `AureoCore`, roles de acceso, eventos empresariales y Circuit Breaker. |
 | `backend/`      | Ingesta WebSocket, ventanas de análisis, reglas de riesgo y consulta a xAI.     |
-| `cli-client/`   | Streaming de veredictos y consultas de reportes desde terminal.                 |
 | `packages/sdk/` | SDK reusable de wallet, monitoring y policy middleware para dapps Ethereum.     |
 | `scripts/`      | Despliegue local, demos de casos, despliegue Docker y servicio systemd.           |
 | `examples/`     | Dapp mínima y casos operativos reproducibles contra Hardhat.                     |
+| `cli-client/`   | CLI para estado del backend, streams de riesgo y reportes de auditoría.          |
 | `md/`           | Arquitectura, desarrollo local, manual de CLI y prompts para contribuir con IA. |
 | `.copilot/`     | Reglas de contexto y hook de pre-commit.                                        |
 
@@ -316,16 +316,17 @@ npm install @aureo/sdk ethers
 ```
 
 ```js
-import { createEthereumMonitor, evaluateEthereumPolicy } from '@aureo/sdk';
+import { createAureoClient } from '@aureo/sdk';
 
-const monitor = createEthereumMonitor({
-  rpcUrl: process.env.APP_WS_RPC_URL,
+const aureo = createAureoClient({
+  rpcUrl: process.env.APP_RPC_URL,
+  wsRpcUrl: process.env.APP_WS_RPC_URL,
   contractAddress: process.env.APP_CONTRACT_ADDRESS,
   abi: ['event Transfer(address indexed from,address indexed to,uint256 value)'],
 });
 
-const unsubscribe = monitor.subscribe('Transfer', (event) => {
-  const result = evaluateEthereumPolicy([
+const unsubscribe = aureo.subscribe('Transfer', (event) => {
+  const result = aureo.evaluatePolicy([
     {
       initiator: event.args[0],
       amount: event.args[2].toString(),
@@ -334,6 +335,8 @@ const unsubscribe = monitor.subscribe('Transfer', (event) => {
   ]);
   console.log(result);
 });
+
+// await aureo.close();
 ```
 
 Consulta la documentación del paquete en
@@ -392,6 +395,7 @@ npm run docker:logs
 - [Arquitectura detallada](md/ARQUITECTURA.md)
 - [Desarrollo con Docker](md/DEVELOPMENT.md)
 - [Manual de la CLI](md/CLI.md)
+- [Guía de la CLI junto al código](cli-client/README.md)
 - [SDK open source](packages/sdk/README.md)
 - [Demo dapp e integración](examples/demo-dapp/README.md)
 - [Scripts operativos](md/SCRIPTS.md)
@@ -399,6 +403,6 @@ npm run docker:logs
 ## Estado de producción
 
 La base está preparada para desarrollo y pruebas locales. Antes de producción
-deben añadirse persistencia idempotente de logs, cola duradera, autenticación
-del WebSocket, métricas, gestión segura de secretos, reintentos con backoff,
+deben añadirse una base compartida para múltiples instancias, autenticación del
+WebSocket y API, métricas, gestión segura de secretos, reintentos con backoff,
 política formal de MFA y pruebas de integración contra la red objetivo.

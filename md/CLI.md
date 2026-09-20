@@ -4,6 +4,10 @@ La CLI está optimizada para terminales Linux y se instala desde el workspace
 `cli-client`. Requiere Node.js 20 o superior. También puede ejecutarse mediante
 Docker Compose sin instalar Node.js en el host.
 
+La guía rápida junto al código está en
+[`cli-client/README.md`](../cli-client/README.md). Este documento contiene la
+referencia operativa y los detalles de integración con el backend.
+
 ## Configuración
 
 Desde la raíz del monorepo:
@@ -24,6 +28,10 @@ AUREO_STREAM_URL=ws://127.0.0.1:3000/stream
 
 En Docker Compose, el contenedor `cli` reemplaza automáticamente `127.0.0.1`
 por el nombre interno `backend`.
+
+La CLI no necesita `ETH_PRIVATE_KEY`, `ETH_PUBLIC_ADDRESS` ni ninguna otra
+clave para consultar el backend. Esas variables pertenecen al backend o a
+otras herramientas del monorepo.
 
 Instala dependencias y verifica la ayuda:
 
@@ -134,3 +142,14 @@ contrato y exportar `AUREO_CORE_ADDRESS`.
   ejecutándose y que el proxy permita WebSocket.
 - Si `report` devuelve `404`, el servicio desplegado todavía no expone `/reports`;
   debe habilitarse ese endpoint en el backend antes de usar este comando.
+
+## Referencia rápida
+
+| Necesidad | Comando |
+| --- | --- |
+| Ver ayuda | `aureo --help` |
+| Comprobar backend | `aureo status` |
+| Estado para automatización | `aureo status --json` |
+| Stream legible | `aureo stream --format pretty` |
+| Stream sin interacción | `aureo stream --no-mfa-prompt --format json` |
+| Reporte legible | `aureo report --format pretty "..."` |

@@ -72,8 +72,8 @@ inusual del iniciador.
    await core.recordCorporateTransfer('0xBeneficiarioAprobado', 25000, reference);
    ```
 
-4. `AureoCore` emite `CorporateTransferRecorded`. El backend recibe el evento
-   mediante `WebSocketProvider` y lo conserva en la ventana de análisis.
+4. `AureoCore` emite `CorporateTransferRecorded`. El backend recupera el log
+   por RPC, lo deduplica y lo conserva en la ventana de análisis.
 
 5. Al cerrar la ventana de un minuto, las reglas deterministas revisan el
    volumen y el historial del iniciador. Como el monto no supera la reserva ni

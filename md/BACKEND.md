@@ -7,7 +7,7 @@ de `AureoCore` con el analizador de riesgo y los clientes HTTP/WebSocket.
 
 - Node.js 20 o superior.
 - npm 10 o superior.
-- Un nodo RPC compatible con WebSocket.
+- Un nodo RPC HTTP compatible con `eth_getLogs`.
 - Un contrato `AureoCore` desplegado.
 - Una clave de xAI para generar análisis con Grok.
 
@@ -142,7 +142,7 @@ Respuesta esperada:
 El backend también expone:
 
 - `POST /reports`: recibe `{ "query": "..." }` y devuelve la consulta junto con
-  los últimos veredictos almacenados en memoria.
+  los últimos veredictos almacenados en `BACKEND_STATE_FILE`.
 - `WS /stream`: envía veredictos nuevos y, al conectarse, los últimos veredictos
   disponibles.
 
@@ -171,18 +171,18 @@ WebSocket, usando `ws://127.0.0.1:3000/stream`.
 
 ## 7. Flujo de procesamiento
 
-1. `ethers.WebSocketProvider` escucha `CorporateTransferRecorded`.
-2. Los eventos se acumulan durante una ventana de un minuto.
+1. El RPC consulta `CorporateTransferRecorded` desde el último bloque guardado.
+2. Los eventos recuperados se deduplican y se acumulan durante una ventana de un minuto.
 3. Las reglas deterministas revisan velocidad y volumen.
 4. Si no existe una regla inmediata, el analizador consulta xAI/Grok.
 5. La respuesta se valida contra los niveles `bajo`, `medio`, `alto` y
    `critico`.
-6. El veredicto se guarda en memoria y se publica por `/stream`.
+6. El veredicto se persiste y se publica por `/stream`.
 7. Las cantidades recientes por iniciador alimentan la siguiente ventana.
 
-El buffer de eventos está limitado a 10.000 entradas y el historial de
-veredictos a 100 entradas. Estos límites evitan crecimiento ilimitado de
-memoria, pero no sustituyen una cola o una base de datos en producción.
+La cola pendiente está limitada a 10.000 entradas y el historial de veredictos
+a 100 entradas. El estado se conserva en el archivo configurado, pero en
+producción con varias instancias debe usarse una base o cola compartida.
 
 ## 8. Detener el servicio
 
@@ -245,7 +245,7 @@ npm run blockchain:test
 | ----------------------------------------- | ----------------------------------------------------------------------------------- |
 | `AUREO_CORE_ADDRESS es obligatorio`       | Define la dirección desplegada en `backend/.env`.                                   |
 | `XAI_API_KEY es obligatorio`              | Configura la clave sin comillas extra ni espacios.                                  |
-| No conecta al RPC                         | Comprueba que Hardhat esté activo y que `BLOCKCHAIN_WS_URL` use `ws://` o `wss://`. |
-| `/health` responde pero no llegan eventos | Verifica dirección, ABI desplegada y conexión WebSocket al nodo.                    |
+| No conecta al RPC                         | Comprueba que Hardhat esté activo y que `BLOCKCHAIN_RPC_URL` use `http://` o `https://`. |
+| `/health` responde pero no llegan eventos | Verifica dirección, ABI, `BLOCKCHAIN_RPC_URL` y el cursor en `BACKEND_STATE_FILE`. |
 | `/stream` se desconecta                   | Revisa el proxy, el puerto `3000` y que permita upgrade WebSocket.                  |
 | `POST /reports` responde `400`            | Envía JSON válido con un campo `query` no vacío.                                    |

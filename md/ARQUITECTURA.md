@@ -5,9 +5,9 @@ observabilidad, seguridad, wallet tooling y evaluación de políticas en tiempo
 real. El flujo principal es:
 
 ```text
-Contrato AureoCore -> WebSocket RPC -> backend (ventana temporal) -> xAI/Grok
-       ^                       |                         |
-       |                       +---- CLI stream <--------+
+Contrato AureoCore -> RPC por bloques -> backend (ventana temporal) -> xAI/Grok
+       ^                    |                         |
+       |                    +---- CLI stream <--------+
        +---------- Circuit Breaker / alerta de compliance
 ```
 
@@ -50,8 +50,10 @@ recomendación del analizador, no una orden automática de congelamiento.
 
 ### Backend
 
-El proveedor `ethers.WebSocketProvider` recibe eventos sin polling. El colector
-agrupa los eventos en ventanas de un minuto y entrega una instantánea al analizador.
+El backend consulta logs por RPC desde el último bloque persistido, recupera
+eventos después de reinicios o desconexiones y elimina duplicados por
+`transactionHash` y `logIndex`. El colector agrupa los eventos en ventanas de un
+minuto y entrega una instantánea al analizador.
 El SDK oficial de OpenAI se configura con `baseURL=https://api.x.ai/v1` para usar
 `grok-4.6`. `response_format: { type: "json_object" }` reduce respuestas libres,
 pero `validateVerdict` vuelve a validar tipos, enum y campos obligatorios antes de
@@ -76,10 +78,8 @@ real debe delegarse a un proveedor de identidad; nunca se considera autenticada
 solo por recibir texto.
 
 Los niveles de alerta válidos son 1–4 y las entradas con dirección, monto o
-motivo inválidos se rechazan con errores custom. En producción, el colector debe
-añadir persistencia idempotente por hash de log,
-reintentos con backoff, métricas, autenticación del stream y una cola duradera
-antes de la llamada al modelo. La lógica de riesgo no debe pausar automáticamente
+motivo inválidos se rechazan con errores custom. El estado local se guarda en `BACKEND_STATE_FILE`; para producción con varias
+instancias debe migrarse a una base transaccional compartida. La lógica de riesgo no debe pausar automáticamente
 sin una política aprobada: `bloquear_contrato` es una recomendación auditable.
 
 ### CLI
@@ -98,7 +98,7 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 ├── backend/
 │   ├── .env.example
 │   ├── package.json
-│   └── src/{analyzer.js,index.js,wallet.js}
+│   └── src/{analyzer.js,index.js,state.js,wallet.js}
 ├── blockchain/
 │   ├── .env.example
 │   ├── contracts/AureoCore.sol
@@ -111,19 +111,23 @@ de salida no cero ante errores para integrarse con automatización de Linux.
 │   └── src/index.js
 ├── packages/sdk/
 │   ├── README.md
-│   └── src/{index.js,wallet.js,monitor.js,policy.js}
+│   └── src/{client.js,index.js,wallet.js,monitor.js,policy.js}
 ├── md/ARQUITECTURA.md
 ├── md/BACKEND.md
 ├── md/Ejemplos_Casos.md
 ├── md/CLI.md
 ├── md/SCRIPTS.md
 ├── md/TECNOLOGIAS.md
+├── md/prompts/README.md
 ├── Dockerfile
 ├── docker-compose.yml
 ├── scripts/
 │   ├── deploy-backend.sh
 │   ├── deploy-blockchain.sh
 │   └── install-systemd.sh
+├── examples/
+│   ├── cases/
+│   └── demo-dapp/
 ├── deploy/systemd/aureo-backend.service
 ├── eslint.config.js
 ├── package.json
@@ -137,7 +141,8 @@ de salida no cero ante errores para integrarse con automatización de Linux.
    `XAI_API_KEY`.
 3. Ejecutar `npm --workspace blockchain run node`.
 4. Desplegar con `npm --workspace blockchain run deploy:local`.
-5. Iniciar el backend y, en otra terminal, `npm run cli -- stream`.
+5. Iniciar el backend y, en otra terminal, `npm run cli -- status` o
+   `npm run cli -- stream`.
 
 ## Pruebas y calidad
 
