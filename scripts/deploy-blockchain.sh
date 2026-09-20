@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NETWORK="${1:-localhost}"
+requested_local_default="${AUREO_LOCAL_DEFAULT_ACCOUNT:-}"
 
 cd "$ROOT_DIR"
 
@@ -14,6 +15,9 @@ if [[ -f blockchain/.env ]]; then
 fi
 
 if [[ "$NETWORK" == "localhost" ]]; then
+  if [[ "$requested_local_default" == true ]]; then
+    export AUREO_LOCAL_DEFAULT_ACCOUNT=true
+  fi
   # Hardhat's local node funds its generated accounts, not a wallet from .env.
   # Set AUREO_LOCAL_DEFAULT_ACCOUNT=false to deploy with a funded custom wallet.
   export AUREO_LOCAL_DEFAULT_ACCOUNT="${AUREO_LOCAL_DEFAULT_ACCOUNT:-true}"

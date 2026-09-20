@@ -91,8 +91,10 @@ para enviarlos al conectarse un nuevo cliente.
 ### OpenAI SDK, Groq y xAI
 
 El SDK oficial de OpenAI se usa por compatibilidad de API. El backend selecciona
-Groq (`https://api.groq.com/openai/v1`) o xAI (`https://api.x.ai/v1`) mediante
-`LLM_PROVIDER`; en modo `auto` prioriza Groq. `GROQ_MODEL` y `XAI_MODEL`
+OpenRouter (`https://openrouter.ai/api/v1`), Groq
+(`https://api.groq.com/openai/v1`) o xAI (`https://api.x.ai/v1`) mediante
+`LLM_PROVIDER`; en modo `auto` prioriza OpenRouter. `OPENROUTER_MODEL`,
+`GROQ_MODEL` y `XAI_MODEL`
 permiten elegir el modelo. La respuesta solicita JSON, pero siempre se valida
 localmente antes de publicarla.
 

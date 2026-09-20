@@ -46,10 +46,14 @@ Completa al menos estas variables:
 BLOCKCHAIN_WS_URL=ws://127.0.0.1:8545
 BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
 AUREO_CORE_ADDRESS=0x...
-LLM_PROVIDER=auto
-GROQ_API_KEY=...
+LLM_PROVIDER=openrouter
+OPENROUTER_API_KEY=...
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=openai/gpt-oss-20b
+OPENROUTER_HTTP_REFERER=http://127.0.0.1:3000
+OPENROUTER_APP_NAME=Aureo
 GROQ_BASE_URL=https://api.groq.com/openai/v1
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-20b
 XAI_API_KEY=...
 XAI_TIMEOUT_MS=15000
 XAI_MAX_RETRIES=2
@@ -74,10 +78,14 @@ Variables opcionales:
 
 | Variable              |        Predeterminado | Uso                                     |
 | --------------------- | --------------------: | --------------------------------------- |
-| `LLM_PROVIDER`        | `auto`                | `groq`, `xai`, `none` o selección automática |
-| `LLM_FALLBACK_PROVIDERS` | `xai,groq` | Proveedores alternativos separados por coma |
+| `LLM_PROVIDER`        | `openrouter`          | `openrouter`, `groq`, `xai`, `none` o selección automática |
+| `LLM_FALLBACK_PROVIDERS` | `groq,xai` | Proveedores alternativos separados por coma |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | Endpoint de OpenRouter |
+| `OPENROUTER_MODEL` | `openai/gpt-oss-20b` | Modelo usado en OpenRouter |
+| `OPENROUTER_HTTP_REFERER` | `http://127.0.0.1:3000` | Referencia opcional para OpenRouter |
+| `OPENROUTER_APP_NAME` | `Aureo` | Nombre opcional de la aplicación |
 | `GROQ_BASE_URL`       | `https://api.groq.com/openai/v1` | Endpoint de Groq |
-| `GROQ_MODEL`          | `llama-3.3-70b-versatile` | Modelo usado en Groq |
+| `GROQ_MODEL`          | `openai/gpt-oss-20b` | Modelo usado en Groq |
 | `LLM_TIMEOUT_MS`      |              `15000` | Timeout común de proveedores (ms) |
 | `LLM_MAX_RETRIES`     |                  `2` | Reintentos comunes de proveedores |
 | `LLM_RETRY_DELAY_MS`  |                `500` | Espera inicial común entre reintentos |

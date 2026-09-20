@@ -22,9 +22,12 @@ if [[ ! -f backend/.env ]]; then
 fi
 
 runtime_file="$(mktemp "${TMPDIR:-/tmp}/aureo-backend.XXXXXX.env")"
+pid_file="$ROOT_DIR/.runtime/local-stack.pids"
 blockchain_pid=''
 backend_pid=''
 cli_pid=''
+mkdir -p "$ROOT_DIR/.runtime"
+printf '%s\n' "$$" > "$pid_file"
 
 stop_process() {
   local pid="$1"
@@ -39,12 +42,14 @@ cleanup() {
   stop_process "$backend_pid"
   stop_process "$blockchain_pid"
   rm -f "$runtime_file"
+  rm -f "$pid_file"
 }
 trap cleanup EXIT INT TERM
 
 printf 'Iniciando nodo Hardhat...\n'
 npm --workspace blockchain run node -- --hostname 127.0.0.1 &
 blockchain_pid=$!
+printf 'blockchain=%s\n' "$blockchain_pid" >> "$pid_file"
 
 printf 'Esperando RPC en 127.0.0.1:8545...\n'
 for attempt in {1..30}; do
@@ -78,6 +83,7 @@ export BLOCKCHAIN_WS_URL="${BLOCKCHAIN_WS_URL:-ws://127.0.0.1:8545}"
 printf 'Iniciando backend en http://127.0.0.1:%s...\n' "${BACKEND_PORT:-3000}"
 npm --workspace backend run start &
 backend_pid=$!
+printf 'backend=%s\n' "$backend_pid" >> "$pid_file"
 
 backend_port="${BACKEND_PORT:-3000}"
 printf 'Esperando backend en 127.0.0.1:%s...\n' "$backend_port"
@@ -110,6 +116,7 @@ if [[ "$WITH_CLI" == true ]]; then
   printf 'Iniciando CLI en modo stream...\n'
   npm --workspace cli-client run start -- stream &
   cli_pid=$!
+  printf 'cli=%s\n' "$cli_pid" >> "$pid_file"
 fi
 
 printf 'Entorno local iniciado. Presiona Ctrl+C para detener todos los procesos.\n'

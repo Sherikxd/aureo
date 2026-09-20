@@ -29,6 +29,7 @@
     "demo:run": "bash scripts/run-demo.sh",
     "metrics:realtime": "npm --workspace @aureo/realtime-metrics run start",
     "start:local": "bash scripts/start-local.sh",
+    "stop:local": "bash scripts/stop-local.sh",
     "deploy:blockchain": "bash scripts/deploy-blockchain.sh",
     "deploy:hashkey": "bash scripts/deploy-blockchain.sh hashkey",
     "hashkey:check": "bash scripts/check-hashkey.sh",

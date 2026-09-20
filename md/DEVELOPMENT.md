@@ -1,5 +1,9 @@
 # Demo local reproducible
 
+Para una guía única de instalación, ejemplos, despliegue local, métricas y
+solución de problemas, consulta
+[`GUIA_DESARROLLO_LOCAL.md`](GUIA_DESARROLLO_LOCAL.md).
+
 Esta guía ejecuta el caso de uso principal de Áureo sin fondos reales:
 
 1. un operador registra una transferencia corporativa;
@@ -60,9 +64,10 @@ npm run setup:env
 `setup:env` solicita y valida una wallet Ethereum en cada ejecución. Si el
 entorno solo necesita lectura, usa `npm run setup:env -- --skip-wallet`.
 
-Configura `GROQ_API_KEY` o `XAI_API_KEY` si quieres análisis LLM y
-`OPERATIONAL_RESERVE` en `backend/.env`. Sin claves, el backend usa el modo
-determinista degradado.
+Configura `OPENROUTER_API_KEY` si quieres análisis LLM y
+`OPERATIONAL_RESERVE` en `backend/.env`. OpenRouter usa por defecto
+`openai/gpt-oss-20b`; Groq y xAI permanecen disponibles como alternativas.
+Sin claves, el backend usa el modo determinista degradado.
 Después:
 
 ```bash
@@ -81,6 +86,21 @@ El backend debe estar conectado a la dirección generada en
 `/runtime/backend.env`. En modo local sin Docker, define
 `AUREO_CORE_ADDRESS` y `BLOCKCHAIN_WS_URL=ws://127.0.0.1:8545` antes de iniciar
 el backend.
+
+Para iniciar el stack local completo sin Docker:
+
+```bash
+npm run start:local -- --with-cli
+```
+
+Para cerrarlo sin borrar despliegues ni el estado persistido:
+
+```bash
+npm run stop:local
+```
+
+El cierre detiene el nodo Hardhat, el backend y la CLI. También puedes usar
+`Ctrl+C` en la terminal de `start:local`.
 
 ## Pruebas automatizadas
 

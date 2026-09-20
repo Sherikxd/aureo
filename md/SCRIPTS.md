@@ -23,10 +23,29 @@ Todos se ejecutan desde la raíz del repositorio.
 | `npm run metrics:realtime`          | Muestra métricas del backend y stream en tiempo real (opcional).                   |
 | `npm run start:local`                | Inicia nodo Hardhat, despliega el contrato y arranca el backend sin Docker.        |
 | `npm run start:local -- --with-cli`  | Inicia el entorno local anterior y la CLI en modo `stream`.                        |
+| `npm run stop:local`                 | Detiene el nodo, backend y CLI del entorno local sin borrar despliegues.           |
 | `npm run docker:up`                  | Construye y levanta nodo, despliegue y backend.                                    |
 | `npm run docker:down`                | Detiene los servicios Docker.                                                      |
 | `npm run docker:logs`                | Muestra logs del backend.                                                          |
 | `npm run docker:cli`                 | Ejecuta la CLI dentro de Docker.                                                   |
+
+### Cerrar el entorno local
+
+Después de iniciar con `start:local`, cierra todos los procesos del stack con:
+
+```bash
+npm run stop:local
+```
+
+`start-local.sh` registra los PID en `.runtime/local-stack.pids`. El comando de
+cierre detiene únicamente el nodo Hardhat, el backend y la CLI registrados; no
+elimina los despliegues de Ignition ni el estado persistido en
+`backend/.runtime`. Si el entorno fue iniciado antes de esta funcionalidad y
+no existe el archivo de PID, el script intenta localizar solamente los
+procesos locales conocidos.
+
+También puedes pulsar `Ctrl+C` en la terminal donde corre `start:local`; el
+script ejecuta la misma limpieza de procesos.
 
 ### Cuentas en el entorno local
 

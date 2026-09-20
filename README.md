@@ -227,6 +227,10 @@ docker compose down -v
 
 ## Desarrollo sin Docker
 
+La guía completa para instalar dependencias, ejecutar los ejemplos, levantar
+el despliegue local, observar métricas y resolver problemas está en
+[`md/GUIA_DESARROLLO_LOCAL.md`](md/GUIA_DESARROLLO_LOCAL.md).
+
 ```bash
 npm install
 npm run setup:env
@@ -238,14 +242,17 @@ En `backend/.env`, configura:
 BLOCKCHAIN_WS_URL=ws://127.0.0.1:8545
 BLOCKCHAIN_RPC_URL=http://127.0.0.1:8545
 AUREO_CORE_ADDRESS=0x...
+LLM_PROVIDER=openrouter
+LLM_FALLBACK_PROVIDERS=groq,xai
+OPENROUTER_API_KEY=tu-clave-de-openrouter
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_MODEL=openai/gpt-oss-20b
 XAI_API_KEY=tu-clave-de-xai
 XAI_BASE_URL=https://api.x.ai/v1
 XAI_MODEL=grok-4.6
-LLM_PROVIDER=auto
-LLM_FALLBACK_PROVIDERS=xai,groq
 GROQ_API_KEY=tu-clave-de-groq
 GROQ_BASE_URL=https://api.groq.com/openai/v1
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-20b
 LLM_TIMEOUT_MS=15000
 LLM_MAX_RETRIES=2
 LLM_RETRY_DELAY_MS=500
@@ -264,8 +271,9 @@ veredictos en `.runtime/backend-state.json` por defecto. Configura
 `BLOCKCHAIN_RPC_URL` para recuperar logs desde el último bloque procesado tras
 una desconexión o reinicio.
 
-`LLM_PROVIDER=auto` prioriza Groq y usa xAI si no existe `GROQ_API_KEY`.
-También puedes usar `LLM_PROVIDER=groq`, `LLM_PROVIDER=xai` o `none`.
+`LLM_PROVIDER=auto` prioriza OpenRouter, después Groq y finalmente xAI según
+las claves disponibles. También puedes usar `LLM_PROVIDER=openrouter`,
+`LLM_PROVIDER=groq`, `LLM_PROVIDER=xai` o `none`.
 Las claves son opcionales para el arranque: sin un proveedor disponible, Áureo
 usa las reglas deterministas y publica `fuente: "determinista_degradado"`.
 Groq y xAI usan la misma interfaz compatible con OpenAI, con timeout,
@@ -289,6 +297,17 @@ npm run start:local
 ```
 
 Añade la CLI en modo `stream` con `npm run start:local -- --with-cli`.
+Para cerrar ese entorno sin borrar los despliegues ni el estado del backend:
+
+```bash
+npm run stop:local
+```
+
+`start:local` registra los procesos en `.runtime/local-stack.pids`.
+`stop:local` los detiene sin eliminar los despliegues de Ignition ni
+`backend/.runtime`. Si el archivo de PID no existe, busca únicamente los
+procesos locales conocidos. También puedes usar `Ctrl+C` en la terminal del
+entorno.
 
 El despliegue local requiere que el nodo Hardhat ya esté ejecutándose. Para
 desplegar en `localhost`, el script usa por defecto la primera cuenta
@@ -444,6 +463,7 @@ npm run docker:logs
 - [Arquitectura detallada](md/ARQUITECTURA.md)
 - [Presentación del proyecto](md/PRESENTACION.md)
 - [Desarrollo con Docker](md/DEVELOPMENT.md)
+- [Guía de desarrollo local y ejemplos](md/GUIA_DESARROLLO_LOCAL.md)
 - [Manual de la CLI](md/CLI.md)
 - [Guía de la CLI junto al código](cli-client/README.md)
 - [SDK open source](packages/sdk/README.md)

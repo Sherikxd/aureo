@@ -13,12 +13,12 @@ const DEFAULT_RETRY_DELAY_MS = 500;
  * @property {string} motivo
  * @property {boolean} bloquear_contrato
  * @property {boolean} requiere_mfa
- * @property {'groq'|'xai'|'determinista'|'determinista_degradado'} fuente
+ * @property {'openrouter'|'groq'|'xai'|'determinista'|'determinista_degradado'} fuente
  */
 
 /**
  * Creates a stateless analyzer backed by an OpenAI-compatible provider.
- * @param {{provider?: 'groq'|'xai'|'auto'|'none', apiKey?: string, baseURL?: string, model?: string, timeoutMs?: number, maxRetries?: number, retryDelayMs?: number}} [options]
+ * @param {{provider?: 'openrouter'|'groq'|'xai'|'auto'|'none', apiKey?: string, baseURL?: string, model?: string, timeoutMs?: number, maxRetries?: number, retryDelayMs?: number}} [options]
  */
 export function createAnalyzer(options = {}) {
   const reportMetric = options.onMetric ?? (() => {});
@@ -31,6 +31,7 @@ export function createAnalyzer(options = {}) {
     ? new OpenAI({
         apiKey,
         baseURL: options.baseURL ?? providerConfig.baseURL,
+        defaultHeaders: providerConfig.defaultHeaders,
         timeout: options.timeoutMs ?? parsePositiveInteger(
           process.env.LLM_TIMEOUT_MS ?? process.env.XAI_TIMEOUT_MS,
           DEFAULT_TIMEOUT_MS,
@@ -87,6 +88,7 @@ export function createAnalyzer(options = {}) {
             client.chat.completions.create({
               model,
               temperature: 0,
+              max_tokens: 512,
               messages: [
                 {
                   role: 'system',
@@ -233,21 +235,33 @@ function parseNonNegativeInteger(value, fallback) {
 
 function resolveProvider(options) {
   const configured = options.provider ?? process.env.LLM_PROVIDER ?? 'auto';
-  if (!['auto', 'groq', 'xai', 'none'].includes(configured)) {
-    throw new Error('LLM_PROVIDER debe ser auto, groq, xai o none.');
+  if (!['auto', 'openrouter', 'groq', 'xai', 'none'].includes(configured)) {
+    throw new Error('LLM_PROVIDER debe ser auto, openrouter, groq, xai o none.');
   }
   if (configured !== 'auto') return configured;
+  if (process.env.OPENROUTER_API_KEY) return 'openrouter';
   if (process.env.GROQ_API_KEY) return 'groq';
   if (process.env.XAI_API_KEY) return 'xai';
   return 'none';
 }
 
 function getProviderConfig(provider, options) {
+  if (provider === 'openrouter') {
+    return {
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: process.env.OPENROUTER_BASE_URL ?? 'https://openrouter.ai/api/v1',
+      model: process.env.OPENROUTER_MODEL ?? 'openai/gpt-oss-20b',
+      defaultHeaders: {
+        'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER ?? 'http://127.0.0.1:3000',
+        'X-Title': process.env.OPENROUTER_APP_NAME ?? 'Aureo',
+      },
+    };
+  }
   if (provider === 'groq') {
     return {
       apiKey: process.env.GROQ_API_KEY,
       baseURL: process.env.GROQ_BASE_URL ?? 'https://api.groq.com/openai/v1',
-      model: process.env.GROQ_MODEL ?? 'llama-3.3-70b-versatile',
+      model: process.env.GROQ_MODEL ?? 'openai/gpt-oss-20b',
     };
   }
   if (provider === 'xai') {
