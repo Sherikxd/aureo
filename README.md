@@ -592,6 +592,7 @@ npm run docker:logs
 - [SDK open source](packages/sdk/README.md)
 - [Demo dapp e integración](examples/demo-dapp/README.md)
 - [Scripts operativos](md/SCRIPTS.md)
+- [Guía de contribución](CONTRIBUTING.md)
 
 ## Estado de producción
 
